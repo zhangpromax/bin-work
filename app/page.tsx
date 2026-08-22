@@ -1,0 +1,63 @@
+'use client';
+
+import React, { useEffect, useState } from 'react';
+import { StoreProvider } from '../lib/store';
+import { initLang } from '../lib/i18n';
+import { Header, TabBar, Toast, Tab } from '../components/chrome';
+import { HomeView } from '../components/HomeView';
+import { ProfilesView } from '../components/ProfilesView';
+import { HealthView, HealthSub, FormType } from '../components/HealthView';
+import { MineView } from '../components/MineView';
+import { QuickMenu, FormModal, BabyModal, MedEditModal, MrecEditModal, Modal } from '../components/Modals';
+
+function App() {
+  const [tab, setTab] = useState<Tab>('home');
+  const [sub, setSub] = useState<HealthSub>('feeding');
+  const [modal, setModal] = useState<Modal>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      initLang(new URLSearchParams(window.location.search).get('lang'));
+    }
+    setReady(true);
+  }, []);
+
+  if (!ready) return <div className="app" />;
+
+  return (
+    <div className="app">
+      <Header />
+      {tab === 'home' && (
+        <HomeView onEditBaby={(id) => setModal({ kind: 'baby', id })} onOpenBaby={() => setModal({ kind: 'baby' })} />
+      )}
+      {tab === 'profiles' && <ProfilesView onEditBaby={(id) => setModal({ kind: 'baby', id })} />}
+      {tab === 'health' && (
+        <HealthView
+          sub={sub}
+          setSub={setSub}
+          onForm={(f: FormType) => setModal({ kind: 'form', form: f })}
+          onEditMed={(id) => setModal({ kind: 'medEdit', id })}
+          onEditMrec={(id) => setModal({ kind: 'mrecEdit', id })}
+        />
+      )}
+      {tab === 'mine' && <MineView />}
+      <TabBar tab={tab} onTab={setTab} onQuick={() => setModal({ kind: 'quick' })} />
+      <Toast />
+
+      {modal?.kind === 'quick' && <QuickMenu onClose={() => setModal(null)} onPick={(f) => setModal({ kind: 'form', form: f })} />}
+      {modal?.kind === 'form' && <FormModal form={modal.form} onClose={() => setModal(null)} />}
+      {modal?.kind === 'baby' && <BabyModal id={modal.id} onClose={() => setModal(null)} />}
+      {modal?.kind === 'medEdit' && <MedEditModal id={modal.id} onClose={() => setModal(null)} />}
+      {modal?.kind === 'mrecEdit' && <MrecEditModal id={modal.id} onClose={() => setModal(null)} />}
+    </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <StoreProvider>
+      <App />
+    </StoreProvider>
+  );
+}
