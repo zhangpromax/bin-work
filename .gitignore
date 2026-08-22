@@ -9,7 +9,6 @@ next-env.d.ts.bak
 .workbuddy/
 capybara-bottom-nav.html
 gif2png.js
-public/capy-icons/
 *.log
 _check.html
 _prod.html
