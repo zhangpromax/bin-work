@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { StoreProvider } from '../lib/store';
+import { StoreProvider, useStore } from '../lib/store';
 import { initLang } from '../lib/i18n';
 import { getSession, parseHashSession, SaSession } from '../lib/auth';
 import { LoginView } from '../components/LoginView';
@@ -17,6 +17,7 @@ function App() {
   const [sub, setSub] = useState<HealthSub>('feeding');
   const [modal, setModal] = useState<Modal>(null);
   const [session, setSession] = useState<SaSession | null>(null);
+  const { theme } = useStore();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -29,7 +30,7 @@ function App() {
   if (!session) return <LoginView onLogin={() => setSession(getSession())} />;
 
   return (
-    <div className="app">
+    <div className={`app theme-${theme}`}>
       <Header />
       {tab === 'home' && (
         <HomeView onEditBaby={(id) => setModal({ kind: 'baby', id })} onOpenBaby={() => setModal({ kind: 'baby' })} />
@@ -45,7 +46,7 @@ function App() {
         />
       )}
       {tab === 'mine' && <MineView />}
-      <TabBar tab={tab} onTab={setTab} onQuick={() => setModal({ kind: 'quick' })} />
+      <TabBar tab={tab} onTab={setTab} theme={theme} />
       <div className="quick-fab" onClick={() => setModal({ kind: 'quick' })}>+</div>
       <Toast />
 

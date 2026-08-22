@@ -25,13 +25,17 @@ function ymd(d?: Date): string {
   return new Date(x.getTime() - off).toISOString().slice(0, 10);
 }
 
+export type Theme = 'static' | 'dynamic';
+
 interface StoreCtx {
   db: DB;
   lang: Lang;
   cloudOn: boolean;
+  theme: Theme;
   toastMsg: { msg: string; id: number } | null;
   toast: (msg: string) => void;
   toggleLang: () => void;
+  setTheme: (t: Theme) => void;
   // 通用增删改
   upsertRow: (table: TableName, row: Record<string, unknown>) => void;
   deleteRow: (table: TableName, id: string) => void;
@@ -91,6 +95,12 @@ function syncConsumption(db: DB, m: Medical, lang: Lang): { db: DB; m: Medical }
   return { db: { ...db, consumptions }, m: medical };
 }
 
+function getStoredTheme(): Theme {
+  if (typeof window === 'undefined') return 'static';
+  const v = localStorage.getItem('babycare_theme');
+  return v === 'dynamic' ? 'dynamic' : 'static';
+}
+
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(EMPTY_DB);
   const [lang, setLangState] = useState<Lang>(getLang());
@@ -101,6 +111,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
     return false;
   });
+  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
   const [toastMsg, setToastMsg] = useState<{ msg: string; id: number } | null>(null);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dbRef = useRef<DB>(db);
@@ -334,8 +345,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     setLangState(getLang());
   };
 
+  const setTheme = (t: Theme) => {
+    setThemeState(t);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('babycare_theme', t);
+    }
+  };
+
   const value: StoreCtx = {
-    db, lang, cloudOn, toastMsg, toast, toggleLang,
+    db, lang, cloudOn, theme, toastMsg, toast, toggleLang, setTheme,
     upsertRow, deleteRow, deleteBabyCascade, saveMedicalRow, deleteMedicalRow, doseMed,
     saveCloudCfg, syncNow, testConn, closeCloud,
     loadSamples, clearData, exportData, importData,

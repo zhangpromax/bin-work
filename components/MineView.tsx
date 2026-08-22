@@ -6,7 +6,7 @@ import { t } from '../lib/i18n';
 import { cloudUrl, cloudKey } from '../lib/cloud';
 
 export function MineView() {
-  const { cloudOn, saveCloudCfg, syncNow, testConn, closeCloud, loadSamples, clearData, exportData, importData, toast } = useStore();
+  const { cloudOn, saveCloudCfg, syncNow, testConn, closeCloud, loadSamples, clearData, exportData, importData, toast, theme, setTheme } = useStore();
   const [url, setUrl] = useState(cloudUrl());
   const [key, setKey] = useState(cloudKey());
   const [testing, setTesting] = useState(false);
@@ -36,6 +36,19 @@ export function MineView() {
             setTesting(false);
           }}>🩺 {t('tabmine') === 'Mine' ? 'Test Connection' : '测试连接'}</button>
           <button className="btn ghost" onClick={closeCloud}>{t('cancel')}</button>
+        </div>
+      </div>
+
+      <div className="card">
+        <h3><span className="ic">🎨</span>{t('theme')}</h3>
+        <div className="mini" style={{ marginBottom: 10 }}>{t('themeTip')}</div>
+        <div className="seg">
+          <button className={theme === 'static' ? 'on' : ''} onClick={() => setTheme('static')}>
+            🖼 {t('themeStatic')}
+          </button>
+          <button className={theme === 'dynamic' ? 'on' : ''} onClick={() => setTheme('dynamic')}>
+            ✨ {t('themeDynamic')}
+          </button>
         </div>
       </div>
 

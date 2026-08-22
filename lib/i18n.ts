@@ -27,6 +27,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     confirmclear: '确定清空所有数据？', missed: '漏喂', done: '已完成', pending: '待完成',
     expired: '已到期', soon: '即将到期', langbtn: 'EN', about: '关于',
     all: '全部', filterby: '按宝宝筛选',
+    theme: '主题风格', themeStatic: '静态图标', themeDynamic: '动态图标',
+    themeTip: '切换底部菜单栏图标为静态或动态水豚噜噜',
   },
   en: {
     title: 'Baby Care', sub: 'Baby Growth Tracker',
@@ -54,6 +56,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     confirmclear: 'Clear all data?', missed: 'Missed', done: 'Done', pending: 'Pending',
     expired: 'Expired', soon: 'Due Soon', langbtn: '中', about: 'About',
     all: 'All', filterby: 'Filter by baby',
+    theme: 'Theme', themeStatic: 'Static Icons', themeDynamic: 'Animated Icons',
+    themeTip: 'Switch bottom bar icons between static and animated capybara Lulu',
   },
 };
 
