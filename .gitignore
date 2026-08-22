@@ -6,3 +6,5 @@ next-env.d.ts.bak
 .DS_Store
 .env
 .env*.local
+.workbuddy/
+capybara-bottom-nav.html
