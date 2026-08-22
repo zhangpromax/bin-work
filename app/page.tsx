@@ -16,7 +16,6 @@ function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [sub, setSub] = useState<HealthSub>('feeding');
   const [modal, setModal] = useState<Modal>(null);
-  const [ready, setReady] = useState(false);
   const [session, setSession] = useState<SaSession | null>(null);
 
   useEffect(() => {
@@ -25,10 +24,8 @@ function App() {
       const s = getSession() || parseHashSession();
       setSession(s);
     }
-    setReady(true);
   }, []);
 
-  if (!ready) return <div className="app" />;
   if (!session) return <LoginView onLogin={() => setSession(getSession())} />;
 
   return (
@@ -49,6 +46,7 @@ function App() {
       )}
       {tab === 'mine' && <MineView />}
       <TabBar tab={tab} onTab={setTab} onQuick={() => setModal({ kind: 'quick' })} />
+      <div className="quick-fab" onClick={() => setModal({ kind: 'quick' })}>+</div>
       <Toast />
 
       {modal?.kind === 'quick' && <QuickMenu onClose={() => setModal(null)} onPick={(f) => setModal({ kind: 'form', form: f })} />}

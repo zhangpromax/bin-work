@@ -42,26 +42,16 @@ export type Tab = 'home' | 'profiles' | 'health' | 'mine';
 
 export function TabBar({ tab, onTab, onQuick }: { tab: Tab; onTab: (t: Tab) => void; onQuick: () => void }) {
   const tabs: { key: Tab; icon: string; label: string }[] = [
-    { key: 'home', icon: '🏠', label: t('tabhome') },
-    { key: 'profiles', icon: '📋', label: t('tabprofile') },
-  ];
-  const tabs2: { key: Tab; icon: string; label: string }[] = [
-    { key: 'health', icon: '💗', label: t('tabhealth') },
-    { key: 'mine', icon: '👤', label: t('tabmine') },
+    { key: 'home', icon: '/capy-icons/lulu1.png', label: t('tabhome') },
+    { key: 'profiles', icon: '/capy-icons/lulu2.png', label: t('tabprofile') },
+    { key: 'health', icon: '/capy-icons/lulu3.png', label: t('tabhealth') },
+    { key: 'mine', icon: '/capy-icons/lulu4.png', label: t('tabmine') },
   ];
   return (
     <div className="tabbar">
       {tabs.map((tb) => (
         <div key={tb.key} className={'tab ' + (tab === tb.key ? 'active' : '')} onClick={() => onTab(tb.key)}>
-          <span className="ti">{tb.icon}</span>{tb.label}
-        </div>
-      ))}
-      <div className="tab c" onClick={onQuick}>
-        <span className="fab">+</span>
-      </div>
-      {tabs2.map((tb) => (
-        <div key={tb.key} className={'tab ' + (tab === tb.key ? 'active' : '')} onClick={() => onTab(tb.key)}>
-          <span className="ti">{tb.icon}</span>{tb.label}
+          <span className="ti"><img src={tb.icon} alt={tb.label} /></span>{tb.label}
         </div>
       ))}
     </div>

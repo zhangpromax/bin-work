@@ -8,3 +8,9 @@ next-env.d.ts.bak
 .env*.local
 .workbuddy/
 capybara-bottom-nav.html
+gif2png.js
+public/capy-icons/
+*.log
+_check.html
+_prod.html
+_build.log
