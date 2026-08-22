@@ -3,6 +3,7 @@
 import React from 'react';
 import { useStore } from '../lib/store';
 import { t, toggleLang } from '../lib/i18n';
+import { CapyLogo } from './Capy';
 
 export function Toast() {
   const { toastMsg } = useStore();
@@ -18,14 +19,17 @@ export function Header() {
   const { cloudOn } = useStore();
   return (
     <header className="top">
-      <div>
-        <h1>{t('title')}</h1>
+      <div className="brand">
+        <CapyLogo size={34} round />
+        <div>
+          <h1>{t('title')}</h1>
         <div className="sub">
           {t('sub')}{' '}
           <span className={cloudOn ? 'syncbar ok' : 'syncbar off'}>
             ● {cloudOn ? t('syncon') : t('syncoff')}
           </span>
         </div>
+      </div>
       </div>
       <button className="langbtn" onClick={() => { toggleLang(); }}>
         {t('langbtn')}

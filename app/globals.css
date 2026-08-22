@@ -145,3 +145,31 @@ label { font-size: 13px; color: #8a756a; display: block; margin-top: 12px; }
   background: rgba(0,0,0,.8); color: #fff; padding: 10px 18px; border-radius: 10px;
   z-index: 99; font-size: 14px;
 }
+
+/* ===== 登录页 ===== */
+.login {
+  max-width: 480px; margin: 0 auto; min-height: 100vh;
+  padding: 0 20px; display: flex; flex-direction: column; justify-content: center;
+}
+.login-hero { text-align: center; margin-bottom: 26px; }
+.login-title { font-size: 24px; margin: 14px 0 4px; color: var(--text); font-weight: 700; }
+.login-sub { color: var(--sub); font-size: 13px; margin: 0; }
+.login-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 18px; }
+.login-seg { display: flex; gap: 8px; margin-bottom: 14px; }
+.login-seg .ls {
+  flex: 1; padding: 10px; border: 1px solid #e3d8ce; background: #fff;
+  border-radius: 10px; font-size: 14px; cursor: pointer; color: #8a756a;
+}
+.login-seg .ls.on { background: var(--green); color: #fff; border-color: var(--green); }
+.login-form label { margin-top: 10px; }
+.code-row { display: flex; gap: 8px; align-items: flex-end; }
+.code-row input { flex: 1; }
+.code-btn { white-space: nowrap; margin-top: 6px; }
+.login-btn { margin-top: 18px; }
+.login-err { color: var(--red); font-size: 13px; margin-top: 8px; }
+.login-tip { color: #A08C82; font-size: 12px; margin-top: 10px; }
+.login-tip.center { text-align: center; }
+.wx-btn { margin-top: 14px; background: #07C160; }
+.wx-btn:hover { background: #06AD56; }
+.wx-ic { margin-right: 6px; }
+.brand { display: flex; align-items: center; gap: 10px; }

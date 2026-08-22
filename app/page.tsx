@@ -3,6 +3,8 @@
 import React, { useEffect, useState } from 'react';
 import { StoreProvider } from '../lib/store';
 import { initLang } from '../lib/i18n';
+import { getSession, parseHashSession, SaSession } from '../lib/auth';
+import { LoginView } from '../components/LoginView';
 import { Header, TabBar, Toast, Tab } from '../components/chrome';
 import { HomeView } from '../components/HomeView';
 import { ProfilesView } from '../components/ProfilesView';
@@ -15,15 +17,19 @@ function App() {
   const [sub, setSub] = useState<HealthSub>('feeding');
   const [modal, setModal] = useState<Modal>(null);
   const [ready, setReady] = useState(false);
+  const [session, setSession] = useState<SaSession | null>(null);
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       initLang(new URLSearchParams(window.location.search).get('lang'));
+      const s = getSession() || parseHashSession();
+      setSession(s);
     }
     setReady(true);
   }, []);
 
   if (!ready) return <div className="app" />;
+  if (!session) return <LoginView onLogin={() => setSession(getSession())} />;
 
   return (
     <div className="app">

@@ -4,12 +4,24 @@ import './globals.css';
 export const metadata: Metadata = {
   title: '家有宝宝 · Baby Care',
   description: '宝宝成长记录台（喂奶/换尿布/睡眠/体温/喂药/医疗/体重/消费）',
+  manifest: '/manifest.webmanifest',
+  applicationName: '水豚噜噜',
+  appleWebApp: {
+    capable: true,
+    title: '水豚噜噜',
+    statusBarStyle: 'default',
+  },
+  icons: {
+    icon: '/logo.png',
+    apple: '/apple-touch-icon.png',
+  },
 };
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   viewportFit: 'cover',
+  themeColor: '#07c160',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
