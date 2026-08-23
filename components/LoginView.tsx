@@ -5,7 +5,7 @@ import { CapyLogo } from './Capy';
 import { mockLogin } from '../lib/auth';
 
 /** 测试用登录页：手机号+验证码 / 微信授权，本地模拟登录，不依赖后端 */
-export function LoginView({ onLogin }: { onLogin: () => void }) {
+export function LoginView({ onLogin }: { onLogin: (phone?: string) => void }) {
   const [tab, setTab] = useState<'phone' | 'wechat'>('phone');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
@@ -42,12 +42,12 @@ export function LoginView({ onLogin }: { onLogin: () => void }) {
       return;
     }
     mockLogin(phone);
-    onLogin();
+    onLogin(phone);
   }
 
   function loginByWechat() {
     mockLogin('wechat');
-    onLogin();
+    onLogin('wechat');
   }
 
   return (

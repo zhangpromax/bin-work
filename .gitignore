@@ -1,6 +1,9 @@
 node_modules/
 .next/
 out/
+.next.bak.*
+out.bak.*
+_rmstatus.txt
 *.tsbuildinfo
 next-env.d.ts.bak
 .DS_Store
@@ -8,6 +11,7 @@ next-env.d.ts.bak
 .env*.local
 .workbuddy/
 capybara-bottom-nav.html
+capybara-theme-preview.html
 gif2png.js
 *.log
 _check.html

@@ -3,31 +3,30 @@
 import React, { useEffect, useState } from 'react';
 import { StoreProvider, useStore } from '../lib/store';
 import { initLang } from '../lib/i18n';
-import { getSession, parseHashSession, SaSession } from '../lib/auth';
+import { parseHashSession } from '../lib/auth';
 import { LoginView } from '../components/LoginView';
 import { Header, TabBar, Toast, Tab } from '../components/chrome';
 import { HomeView } from '../components/HomeView';
 import { ProfilesView } from '../components/ProfilesView';
 import { HealthView, HealthSub, FormType } from '../components/HealthView';
 import { MineView } from '../components/MineView';
-import { QuickMenu, FormModal, BabyModal, MedEditModal, MrecEditModal, Modal } from '../components/Modals';
+import { QuickMenu, FormModal, BabyModal, MedEditModal, MrecEditModal, Modal, ProfileModal } from '../components/Modals';
 
 function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [sub, setSub] = useState<HealthSub>('feeding');
   const [modal, setModal] = useState<Modal>(null);
-  const [session, setSession] = useState<SaSession | null>(null);
-  const { theme } = useStore();
+  const { theme, isLoggedIn, login, loginWithSession } = useStore();
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
       initLang(new URLSearchParams(window.location.search).get('lang'));
-      const s = getSession() || parseHashSession();
-      setSession(s);
+      const s = parseHashSession();
+      if (s) loginWithSession();
     }
   }, []);
 
-  if (!session) return <LoginView onLogin={() => setSession(getSession())} />;
+  if (!isLoggedIn) return <LoginView onLogin={(p) => login(p)} />;
 
   return (
     <div className={`app theme-${theme}`}>
@@ -55,6 +54,7 @@ function App() {
       {modal?.kind === 'baby' && <BabyModal id={modal.id} onClose={() => setModal(null)} />}
       {modal?.kind === 'medEdit' && <MedEditModal id={modal.id} onClose={() => setModal(null)} />}
       {modal?.kind === 'mrecEdit' && <MrecEditModal id={modal.id} onClose={() => setModal(null)} />}
+      {modal?.kind === 'profile' && <ProfileModal onClose={() => setModal(null)} />}
     </div>
   );
 }

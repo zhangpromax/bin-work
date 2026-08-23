@@ -6,14 +6,37 @@ import { t } from '../lib/i18n';
 import { cloudUrl, cloudKey } from '../lib/cloud';
 
 export function MineView() {
-  const { cloudOn, saveCloudCfg, syncNow, testConn, closeCloud, loadSamples, clearData, exportData, importData, toast, theme, setTheme } = useStore();
+  const { cloudOn, saveCloudCfg, syncNow, testConn, closeCloud, loadSamples, clearData, exportData, importData, toast, theme, setTheme, isLoggedIn, currentUser, login, logout } = useStore();
   const [url, setUrl] = useState(cloudUrl());
   const [key, setKey] = useState(cloudKey());
   const [testing, setTesting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
+  const accountLabel = currentUser?.phone
+    ? (currentUser.phone.startsWith('+86') ? currentUser.phone.slice(3) : currentUser.phone)
+    : currentUser?.email || '本地用户';
+
   return (
     <main>
+      <div className="card">
+        <h3><span className="ic">👤</span>{t('tabmine') === 'Mine' ? 'Account' : '账号'}</h3>
+        {isLoggedIn ? (
+          <>
+            <div className="row">
+              <span className="muted">{t('tabmine') === 'Mine' ? 'Current' : '当前账号'}</span>
+              <span className="tag">{accountLabel}</span>
+            </div>
+            <button className="btn red" style={{ marginTop: 10 }} onClick={logout}>
+              {t('tabmine') === 'Mine' ? 'Sign Out' : '退出登录'}
+            </button>
+          </>
+        ) : (
+          <button className="btn" style={{ marginTop: 4 }} onClick={() => login()}>
+            {t('tabmine') === 'Mine' ? 'Sign In' : '登录'}
+          </button>
+        )}
+      </div>
+
       <div className="card">
         <h3><span className="ic">⚙️</span>{t('syncset')}</h3>
         <div className="mini">{t('synctip')}</div>

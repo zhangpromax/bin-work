@@ -102,7 +102,24 @@ export interface Consumption {
   updatedAt: number;
 }
 
+export interface Profile {
+  avatar: string;
+  username: string;
+  gender: 'male' | 'female' | '';
+  phone: string;
+  signature: string;
+}
+
+export const EMPTY_PROFILE: Profile = {
+  avatar: '',
+  username: '家有宝宝',
+  gender: '',
+  phone: '',
+  signature: '',
+};
+
 export interface DB {
+  profile: Profile;
   babies: Baby[];
   feedings: Feeding[];
   diapers: Diaper[];
@@ -122,6 +139,7 @@ export const TABLES = [
 export type TableName = (typeof TABLES)[number];
 
 export const EMPTY_DB: DB = {
+  profile: { ...EMPTY_PROFILE },
   babies: [], feedings: [], diapers: [], sleeps: [], temps: [],
   medicines: [], medicals: [], weights: [], consumptions: [],
 };

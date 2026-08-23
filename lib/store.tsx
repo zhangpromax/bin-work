@@ -5,13 +5,14 @@ import React, {
 } from 'react';
 import {
   DB, EMPTY_DB, TableName, TABLES, Baby, Feeding, Diaper, Sleep, Temp,
-  Medicine, Medical, Weight, Consumption,
+  Medicine, Medical, Weight, Consumption, Profile,
 } from './types';
 import {
   cloudInit, cloudPull, cloudPush, cloudEnabled, cloudSave,
   cloudUrl, cloudKey, cloudTest,
 } from './cloud';
 import { getLang, setLang as i18nSetLang, Lang, toggleLang as i18nToggle } from './i18n';
+import { signOut, getSession, mockLogin } from './auth';
 
 function uid(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -34,8 +35,17 @@ interface StoreCtx {
   theme: Theme;
   toastMsg: { msg: string; id: number } | null;
   toast: (msg: string) => void;
+  clearToast: () => void;
+  // 用户资料
+  saveProfile: (patch: Partial<Profile>) => void;
   toggleLang: () => void;
   setTheme: (t: Theme) => void;
+  // 登录/登出
+  isLoggedIn: boolean;
+  currentUser: { phone?: string; email?: string } | null;
+  login: (phone?: string) => void;
+  loginWithSession: () => void;
+  logout: () => void;
   // 通用增删改
   upsertRow: (table: TableName, row: Record<string, unknown>) => void;
   deleteRow: (table: TableName, id: string) => void;
@@ -116,8 +126,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dbRef = useRef<DB>(db);
   dbRef.current = db;
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!getSession());
+  const [currentUser, setCurrentUser] = useState<{ phone?: string; email?: string } | null>(() => {
+    const s = getSession();
+    return s ? { phone: s.user?.phone, email: s.user?.email } : null;
+  });
 
-  const toast = (msg: string) => setToastMsg({ msg, id: Date.now() });
+const toast = (msg: string) => setToastMsg({ msg, id: Date.now() });
+const clearToast = () => setToastMsg(null);
+const saveProfile = (patch: Partial<Profile>) => {
+  const next: DB = { ...db, profile: { ...db.profile, ...patch } };
+  setDb(next);
+  persist(next);
+};
 
   const persist = (nextDb: DB) => {
     localStorage.setItem('babycare_db', JSON.stringify(nextDb));
@@ -302,7 +323,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const medicals: Medical[] = [...prev.medicals, { id: uid(), babyId: bid, type: 'vaccine', date: today, nextDate: ymd(nd), cost: '0', note: '', syncedId: null, createdAt: ts, updatedAt: ts }];
       const weights: Weight[] = [...prev.weights, { id: uid(), babyId: bid, date: today, weight: '7.2', createdAt: ts, updatedAt: ts }];
       const consumptions: Consumption[] = [...prev.consumptions, { id: uid(), babyId: bid, category: 'catfood', amount: '358', date: today, note: lang === 'en' ? 'Formula' : '奶粉', source: 'manual', createdAt: ts, updatedAt: ts }];
-      const nextDb: DB = { babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, consumptions };
+      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, consumptions };
       persist(nextDb);
       return nextDb;
     });
@@ -352,8 +373,30 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
+  const login = (phone?: string) => {
+    mockLogin(phone);
+    const s = getSession();
+    setIsLoggedIn(true);
+    setCurrentUser(s ? { phone: s.user?.phone, email: s.user?.email } : null);
+  };
+
+  const loginWithSession = () => {
+    const s = getSession();
+    setIsLoggedIn(true);
+    setCurrentUser(s ? { phone: s.user?.phone, email: s.user?.email } : null);
+  };
+
+  const logout = () => {
+    signOut();
+    setIsLoggedIn(false);
+    setCurrentUser(null);
+    toast('已退出登录');
+  };
+
   const value: StoreCtx = {
-    db, lang, cloudOn, theme, toastMsg, toast, toggleLang, setTheme,
+    db, lang, cloudOn, theme, toastMsg, toast, clearToast, toggleLang, setTheme,
+    saveProfile,
+    isLoggedIn, currentUser, login, loginWithSession, logout,
     upsertRow, deleteRow, deleteBabyCascade, saveMedicalRow, deleteMedicalRow, doseMed,
     saveCloudCfg, syncNow, testConn, closeCloud,
     loadSamples, clearData, exportData, importData,

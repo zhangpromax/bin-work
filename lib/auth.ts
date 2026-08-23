@@ -65,6 +65,96 @@ function headers(key: string): Record<string, string> {
   };
 }
 
+/** 是否已配置 Supabase（URL + anon key） */
+export function cloudConfigured(): boolean {
+  const { url, key } = cfg();
+  return !!(url && key);
+}
+
+function toSession(j: Record<string, any>): SaSession {
+  return {
+    access_token: j.access_token,
+    refresh_token: j.refresh_token,
+    token_type: j.token_type,
+    expires_in: j.expires_in,
+    user: {
+      id: j.user?.id,
+      phone: j.user?.phone,
+      email: j.user?.email,
+      app_metadata: j.user?.app_metadata,
+      user_metadata: j.user?.user_metadata,
+    },
+  };
+}
+
+/** 连通性测试：Supabase Auth health 端点（无需业务表） */
+export async function testCloudConn(): Promise<string> {
+  const { url, key } = cfg();
+  if (!url || !key) return '❌ 未配置 Supabase（URL 与 anon key）';
+  try {
+    const r = await fetch(`${url}/auth/v1/health`, {
+      headers: { apikey: key, Authorization: `Bearer ${key}` },
+    });
+    if (r.ok) {
+      const j = await r.json().catch(() => ({}));
+      if (j.is_healthy === false) return '❌ Supabase 返回不健康状态';
+      return `✅ Supabase 连接正常 (HTTP ${r.status})`;
+    }
+    const body = await r.text();
+    return `❌ HTTP ${r.status}: ${body.slice(0, 120)}`;
+  } catch (e) {
+    return '❌ 网络错误：' + (e instanceof Error ? e.message : '未知');
+  }
+}
+
+/** 邮箱注册（Supabase Auth signup） */
+export async function signupEmail(emailRaw: string, password: string): Promise<AuthRes> {
+  const { url, key } = cfg();
+  if (!url || !key) return { error: '请先配置 Supabase（URL 与 anon key）' };
+  const email = emailRaw.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: '请输入正确的邮箱地址' };
+  if (password.length < 6) return { error: '密码至少 6 位' };
+  try {
+    const r = await fetch(`${url}/auth/v1/signup`, {
+      method: 'POST',
+      headers: headers(key),
+      body: JSON.stringify({ email, password }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.error_description || j.message || `注册失败 (HTTP ${r.status})` };
+    if (j.access_token && j.user) {
+      const session = toSession(j);
+      setSession(session);
+      return { session };
+    }
+    return { error: '注册已提交：请查收邮箱确认链接后登录。若收不到，可在 Supabase → Auth → Settings 关闭 Email confirmation' };
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
+/** 邮箱密码登录（Supabase Auth token grant_type=password） */
+export async function loginEmail(emailRaw: string, password: string): Promise<AuthRes> {
+  const { url, key } = cfg();
+  if (!url || !key) return { error: '请先配置 Supabase（URL 与 anon key）' };
+  const email = emailRaw.trim().toLowerCase();
+  if (!email || !password) return { error: '请输入邮箱和密码' };
+  try {
+    const r = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: headers(key),
+      body: JSON.stringify({ email, password }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.error_description || j.message || `登录失败 (HTTP ${r.status})` };
+    const session = toSession(j);
+    setSession(session);
+    return { session };
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
 export interface AuthRes {
   session?: SaSession;
   error?: string;

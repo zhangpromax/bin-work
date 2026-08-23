@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: '家有宝宝 · Baby Care',
+  title: '噜妹',
   description: '宝宝成长记录台（喂奶/换尿布/睡眠/体温/喂药/医疗/体重/消费）',
   manifest: '/manifest.webmanifest',
   applicationName: '水豚噜噜',

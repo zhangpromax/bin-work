@@ -2,15 +2,16 @@
 
 import React from 'react';
 import { useStore } from '../lib/store';
-import { t, toggleLang } from '../lib/i18n';
+import { t } from '../lib/i18n';
 import { CapyLogo } from './Capy';
 
 export function Toast() {
-  const { toastMsg } = useStore();
+  const { toastMsg, clearToast } = useStore();
   if (!toastMsg) return null;
   return (
-    <div key={toastMsg.id} className="toast">
-      {toastMsg.msg}
+    <div key={toastMsg.id} className="toast" role="alert">
+      <span className="toast-msg">{toastMsg.msg}</span>
+      <button type="button" className="toast-close" aria-label="关闭" onClick={clearToast}>×</button>
     </div>
   );
 }
@@ -20,20 +21,15 @@ export function Header() {
   return (
     <header className="top">
       <div className="brand">
-        <CapyLogo size={34} round />
-        <div>
+        <CapyLogo />
+        <div className="brand-text">
           <h1>{t('title')}</h1>
-        <div className="sub">
-          {t('sub')}{' '}
-          <span className={cloudOn ? 'syncbar ok' : 'syncbar off'}>
-            ● {cloudOn ? t('syncon') : t('syncoff')}
-          </span>
+          <div className="sub">
+            <span>{t('subtitle')}</span>
+            {cloudOn ? <span className="syncbar ok">● {t('cloudSync')}</span> : null}
+          </div>
         </div>
       </div>
-      </div>
-      <button className="langbtn" onClick={() => { toggleLang(); }}>
-        {t('langbtn')}
-      </button>
     </header>
   );
 }

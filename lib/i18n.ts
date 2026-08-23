@@ -29,6 +29,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     all: '全部', filterby: '按宝宝筛选',
     theme: '主题风格', themeStatic: '静态图标', themeDynamic: '动态图标',
     themeTip: '切换底部菜单栏图标为静态或动态水豚噜噜',
+    profile: '个人资料', signature: '个性签名', phone: '手机号',
+    cloudSync: '已同步',
   },
   en: {
     title: 'Baby Care', sub: 'Baby Growth Tracker',
@@ -58,6 +60,8 @@ const I18N: Record<Lang, Record<string, string>> = {
     all: 'All', filterby: 'Filter by baby',
     theme: 'Theme', themeStatic: 'Static Icons', themeDynamic: 'Animated Icons',
     themeTip: 'Switch bottom bar icons between static and animated capybara Lulu',
+    profile: 'Profile', signature: 'Signature', phone: 'Phone',
+    cloudSync: 'Synced',
   },
 };
 

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useStore, uid, ymd } from '../lib/store';
 import { typeName, babyName } from '../lib/helpers';
 import { t, Lang } from '../lib/i18n';
@@ -13,6 +13,7 @@ export type Modal =
   | { kind: 'baby'; id?: string }
   | { kind: 'medEdit'; id: string }
   | { kind: 'mrecEdit'; id: string }
+  | { kind: 'profile' }
   | null;
 
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -219,7 +220,7 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
 }
 
 /* ================= 宝宝档案 ================= */
-function compressImage(file: File, maxDim: number): Promise<string> {
+export function compressImage(file: File, maxDim: number): Promise<string> {
   return new Promise((resolve, reject) => {
     const r = new FileReader();
     r.onload = () => {
@@ -380,6 +381,71 @@ export function MrecEditModal({ id, onClose }: { id: string; onClose: () => void
       <label>{t('note')}</label>
       <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
       <button className="btn red" onClick={del}>{t('delete')}</button>
+      <button className="btn" style={{ marginTop: 14 }} onClick={save}>{t('save')}</button>
+      <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>
+    </Overlay>
+  );
+}
+
+/* ================= 个人资料 ================= */
+export function ProfileModal({ onClose }: { onClose: () => void }) {
+  const { db, saveProfile, toast } = useStore();
+  const p = db.profile;
+  const [username, setUsername] = useState(p.username);
+  const [gender, setGender] = useState<'male' | 'female' | ''>(p.gender);
+  const [phone, setPhone] = useState(p.phone);
+  const [signature, setSignature] = useState(p.signature);
+  const [avatar, setAvatar] = useState(p.avatar);
+  const fileRef = useRef<HTMLInputElement | null>(null);
+
+  const onFile = (f: File) => {
+    compressImage(f, 256).then(setAvatar).catch(() => toast('图片处理失败'));
+  };
+
+  const save = () => {
+    saveProfile({
+      username: username.trim() || '家有宝宝',
+      gender,
+      phone: phone.trim(),
+      signature: signature.trim(),
+      avatar,
+    });
+    toast('已保存');
+    onClose();
+  };
+
+  return (
+    <Overlay onClose={onClose}>
+      <CloseBtn onClose={onClose} />
+      <h3>{t('profile')}</h3>
+      <center>
+        <div onClick={() => fileRef.current?.click()} style={{ cursor: 'pointer' }} title="点击更换头像">
+          {avatar ? (
+            <img className="avatar" style={{ width: 84, height: 84 }} src={avatar} alt="头像" />
+          ) : (
+            <div className="avatar" style={{ width: 84, height: 84, display: 'inline-block' }} />
+          )}
+        </div>
+        <input
+          ref={fileRef}
+          type="file"
+          accept="image/*"
+          style={{ display: 'none' }}
+          onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }}
+        />
+      </center>
+      <label>{t('name')}</label>
+      <input value={username} onChange={(e) => setUsername(e.target.value)} />
+      <label>{t('gender')}</label>
+      <Seg
+        options={[{ v: '', label: '-' }, { v: 'male', label: t('male') }, { v: 'female', label: t('female') }]}
+        value={gender}
+        onChange={(v) => setGender(v as 'male' | 'female' | '')}
+      />
+      <label>{t('phone')}</label>
+      <input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="" />
+      <label>{t('signature')}</label>
+      <textarea rows={2} value={signature} onChange={(e) => setSignature(e.target.value)} />
       <button className="btn" style={{ marginTop: 14 }} onClick={save}>{t('save')}</button>
       <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>
     </Overlay>
