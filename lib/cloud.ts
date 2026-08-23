@@ -1,5 +1,5 @@
 import { DB, TableName, TABLES } from './types';
-import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY } from './config';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, apiBaseUrl } from './config';
 
 /**
  * 私有云同步适配器（Supabase，无官方 SDK，直接用 fetch 调 PostgREST）
@@ -28,6 +28,7 @@ function normalizeCloudUrl(url: string): string {
 /**
  * 解析当前生效的配置：优先用户本机覆盖（localStorage），回退到部署级默认值。
  * 只有用户显式清空（closeCloud）或用空串保存时，才视为未配置。
+ * 实际请求基地址由 apiBaseUrl() 决定（线上走 /api 代理，本地直连）。
  */
 function resolveConfig(): { url: string; key: string; userOverridden: boolean } {
   try {
@@ -53,7 +54,7 @@ export function cloudInit(): void {
   }
   const c = resolveConfig();
   if (c.url && c.key) {
-    cfg = { url: c.url, key: c.key };
+    cfg = { url: apiBaseUrl(), key: c.key };
     enabled = true;
   }
 }
@@ -67,7 +68,7 @@ export function cloudSave(url: string, key: string): void {
   } else {
     localStorage.setItem('babycare_cloud', JSON.stringify({ url: u, key: k }));
   }
-  cfg = { url: u, key: k };
+  cfg = { url: apiBaseUrl(), key: k };
   enabled = !!(u && k);
 }
 
@@ -81,7 +82,7 @@ export function setLocalOnly(on: boolean): void {
     localStorage.removeItem(LS_LOCAL_ONLY);
     const c = resolveConfig();
     enabled = !!(c.url && c.key);
-    if (enabled) cfg = { url: c.url, key: c.key };
+    if (enabled) cfg = { url: apiBaseUrl(), key: c.key };
   }
 }
 
@@ -159,7 +160,7 @@ export async function cloudPush(db: DB): Promise<void> {
 }
 
 export async function cloudTest(url: string, key: string): Promise<string> {
-  const u = normalizeCloudUrl(url);
+  const u = apiBaseUrl();
   const r = await fetch(`${u}/rest/v1/babies?select=id&limit=1`, {
     headers: { apikey: key.trim(), Authorization: `Bearer ${key.trim()}` },
   });

@@ -27,7 +27,7 @@ export interface SaSession {
 const LS_SESSION = 'babycare_session';
 const LS_CLOUD = 'babycare_cloud';
 
-import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY } from './config';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, apiBaseUrl } from './config';
 
 function normalizeAuthUrl(url: string): string {
   let u = url.trim();
@@ -37,15 +37,23 @@ function normalizeAuthUrl(url: string): string {
 }
 
 function cfg(): { url: string; key: string } {
+  let rawUrl = '';
+  let rawKey = '';
   try {
     const s = JSON.parse(localStorage.getItem(LS_CLOUD) || '{}');
-    if (s.url && s.key) return { url: normalizeAuthUrl(s.url), key: s.key.trim() };
+    if (s.url && s.key) {
+      rawUrl = s.url;
+      rawKey = s.key;
+    }
   } catch { /* ignore */ }
   // 回退到部署级默认值
-  if (DEFAULT_SUPABASE_URL.trim() && DEFAULT_SUPABASE_ANON_KEY.trim()) {
-    return { url: normalizeAuthUrl(DEFAULT_SUPABASE_URL), key: DEFAULT_SUPABASE_ANON_KEY.trim() };
+  if (!rawUrl || !rawKey) {
+    rawUrl = DEFAULT_SUPABASE_URL;
+    rawKey = DEFAULT_SUPABASE_ANON_KEY;
   }
-  return { url: '', key: '' };
+  if (!rawUrl.trim() || !rawKey.trim()) return { url: '', key: '' };
+  // 实际请求基地址：线上走 /api 代理，本地直连
+  return { url: apiBaseUrl(), key: rawKey.trim() };
 }
 
 export function fullPhone(phone: string): string {

@@ -15,10 +15,31 @@ const ENV_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const ENV_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // 👇👇👇 开发者：把你的 Supabase 项目值填到下面两行即可（留空则走 env / 让用户填）
-export const DEFAULT_SUPABASE_URL = ENV_URL || 'https://kltqzleqiqykvpilcckr.supabase.co';
+const SUPABASE_ORIGIN = 'https://kltqzleqiqykvpilcckr.supabase.co';
+export const DEFAULT_SUPABASE_URL = ENV_URL || SUPABASE_ORIGIN;
 export const DEFAULT_SUPABASE_ANON_KEY =
   ENV_KEY ||
   'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsdHF6aWVxaXF5a3ZwbGljY2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNzY3OTEsImV4cCI6MjEwMjg1Mjc5MX0.vV1Ped4vGT5fPZ1WKB1O5FUtIK1bdPZdAEyGGhcAMy8';
+
+/**
+ * 智能解析实际请求的 API 基地址：
+ * - 线上部署在 bin-work.pages.dev（或任何非 localhost）时，走同域 /api 代理，
+ *   由 Cloudflare Pages Functions 转发到 Supabase，绕过大陆对 supabase.co 的 DNS 污染。
+ * - 本地预览（localhost / 127.0.0.1）时，直连 Supabase（本地不受污染影响，且代理无 Functions 环境）。
+ *
+ * 返回形如：
+ *   线上 -> https://bin-work.pages.dev/api
+ *   本地 -> https://kltqzleqiqykvpilcckr.supabase.co
+ */
+export function apiBaseUrl(): string {
+  if (typeof window === 'undefined') return DEFAULT_SUPABASE_URL;
+  const h = window.location.hostname;
+  if (h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.endsWith('.local')) {
+    return DEFAULT_SUPABASE_URL;
+  }
+  // 线上：同域 /api 代理
+  return window.location.origin + '/api';
+}
 
 /** 是否已有可用的部署级默认值（至少一个 URL，便于登录页判断是否需要让用户填） */
 export function hasDefaultCloud(): boolean {
