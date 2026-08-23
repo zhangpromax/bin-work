@@ -9,10 +9,11 @@ import {
 } from './types';
 import {
   cloudInit, cloudPull, cloudPush, cloudEnabled, cloudSave,
-  cloudUrl, cloudKey, cloudTest,
+  cloudUrl, cloudKey, cloudTest, setLocalOnly, isLocalOnly, cloudUserOverridden,
 } from './cloud';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from './config';
 import { getLang, setLang as i18nSetLang, Lang, toggleLang as i18nToggle } from './i18n';
-import { signOut, getSession, mockLogin } from './auth';
+import { signOut, getSession, mockLogin, setSession, SaSession } from './auth';
 
 function uid(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -43,7 +44,7 @@ interface StoreCtx {
   // 登录/登出
   isLoggedIn: boolean;
   currentUser: { phone?: string; email?: string } | null;
-  login: (phone?: string) => void;
+  login: (session?: SaSession) => void;
   loginWithSession: () => void;
   logout: () => void;
   // 通用增删改
@@ -59,6 +60,8 @@ interface StoreCtx {
   syncNow: () => Promise<void>;
   testConn: (url: string, key: string) => Promise<string>;
   closeCloud: () => void;
+  setLocalMode: (on: boolean) => void;
+  usingDefaultCloud: boolean;
   // 数据工具
   loadSamples: () => void;
   clearData: () => void;
@@ -291,9 +294,19 @@ const saveProfile = (patch: Partial<Profile>) => {
 
   const closeCloud = () => {
     cloudSave('', '');
+    setLocalOnly(true);
     setCloudOn(false);
-    toast('已关闭云端');
+    toast('已切换到本地模式');
   };
+
+  const setLocalMode = (on: boolean) => {
+    setLocalOnly(on);
+    setCloudOn(!on && cloudEnabled());
+    toast(on ? '已切换到本地模式' : '已启用云端同步');
+  };
+
+  // 是否正在使用部署预置的默认值（用于「我的」页提示，避免用户误改）
+  const usingDefaultCloud = !cloudUserOverridden() && hasDefaultCloud();
 
   const loadSamples = () => {
     setDb((prev) => {
@@ -373,8 +386,9 @@ const saveProfile = (patch: Partial<Profile>) => {
     }
   };
 
-  const login = (phone?: string) => {
-    mockLogin(phone);
+  const login = (session?: SaSession) => {
+    if (session) setSession(session);
+    else mockLogin();
     const s = getSession();
     setIsLoggedIn(true);
     setCurrentUser(s ? { phone: s.user?.phone, email: s.user?.email } : null);
@@ -398,7 +412,7 @@ const saveProfile = (patch: Partial<Profile>) => {
     saveProfile,
     isLoggedIn, currentUser, login, loginWithSession, logout,
     upsertRow, deleteRow, deleteBabyCascade, saveMedicalRow, deleteMedicalRow, doseMed,
-    saveCloudCfg, syncNow, testConn, closeCloud,
+    saveCloudCfg, syncNow, testConn, closeCloud, setLocalMode, usingDefaultCloud,
     loadSamples, clearData, exportData, importData,
   };
 

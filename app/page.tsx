@@ -26,7 +26,7 @@ function App() {
     }
   }, []);
 
-  if (!isLoggedIn) return <LoginView onLogin={(p) => login(p)} />;
+  if (!isLoggedIn) return <LoginView onLogin={(s) => login(s)} />;
 
   return (
     <div className={`app theme-${theme}`}>

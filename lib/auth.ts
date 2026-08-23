@@ -27,11 +27,24 @@ export interface SaSession {
 const LS_SESSION = 'babycare_session';
 const LS_CLOUD = 'babycare_cloud';
 
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY } from './config';
+
+function normalizeAuthUrl(url: string): string {
+  let u = url.trim();
+  u = u.replace(/\/rest\/v1\/?$/i, '');
+  u = u.replace(/\/+$/, '');
+  return u;
+}
+
 function cfg(): { url: string; key: string } {
   try {
     const s = JSON.parse(localStorage.getItem(LS_CLOUD) || '{}');
-    if (s.url && s.key) return { url: s.url.trim(), key: s.key.trim() };
+    if (s.url && s.key) return { url: normalizeAuthUrl(s.url), key: s.key.trim() };
   } catch { /* ignore */ }
+  // 回退到部署级默认值
+  if (DEFAULT_SUPABASE_URL.trim() && DEFAULT_SUPABASE_ANON_KEY.trim()) {
+    return { url: normalizeAuthUrl(DEFAULT_SUPABASE_URL), key: DEFAULT_SUPABASE_ANON_KEY.trim() };
+  }
   return { url: '', key: '' };
 }
 
@@ -50,7 +63,7 @@ export function getSession(): SaSession | null {
   return null;
 }
 
-function setSession(s: SaSession) {
+export function setSession(s: SaSession) {
   localStorage.setItem(LS_SESSION, JSON.stringify(s));
 }
 export function clearSession() {

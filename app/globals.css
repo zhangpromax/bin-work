@@ -22,6 +22,9 @@ html, body {
   background: var(--bg); color: var(--text);
   font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Helvetica Neue", Arial, sans-serif;
   font-size: 15px; line-height: 1.5;
+  /* 禁止手指双指/双击缩放，适配桌面快捷方式全屏体验 */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
 }
 
 .app { max-width: 480px; margin: 0 auto; min-height: 100vh; padding-bottom: 80px; background: var(--bg); }

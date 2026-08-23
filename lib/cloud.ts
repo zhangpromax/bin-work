@@ -1,4 +1,5 @@
 import { DB, TableName, TABLES } from './types';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY } from './config';
 
 /**
  * 私有云同步适配器（Supabase，无官方 SDK，直接用 fetch 调 PostgREST）
@@ -13,21 +14,89 @@ export interface CloudConfig {
 
 let cfg: CloudConfig = { url: '', key: '' };
 let enabled = false;
+let localOnly = false;
+const LS_LOCAL_ONLY = 'babycare_cloud_local';
+
+function normalizeCloudUrl(url: string): string {
+  let u = url.trim();
+  // 小白常从 Supabase Data API 复制出带 /rest/v1/ 后缀的完整地址，自动修正为项目根 URL
+  u = u.replace(/\/rest\/v1\/?$/i, '');
+  u = u.replace(/\/+$/, '');
+  return u;
+}
+
+/**
+ * 解析当前生效的配置：优先用户本机覆盖（localStorage），回退到部署级默认值。
+ * 只有用户显式清空（closeCloud）或用空串保存时，才视为未配置。
+ */
+function resolveConfig(): { url: string; key: string; userOverridden: boolean } {
+  try {
+    const s = JSON.parse(localStorage.getItem('babycare_cloud') || '{}');
+    if (typeof s.url === 'string' && typeof s.key === 'string' && s.url.trim() && s.key.trim()) {
+      return { url: normalizeCloudUrl(s.url), key: s.key.trim(), userOverridden: true };
+    }
+  } catch { /* ignore */ }
+  // 回退到部署默认值
+  if (DEFAULT_SUPABASE_URL.trim() && DEFAULT_SUPABASE_ANON_KEY.trim()) {
+    return { url: normalizeCloudUrl(DEFAULT_SUPABASE_URL), key: DEFAULT_SUPABASE_ANON_KEY.trim(), userOverridden: false };
+  }
+  return { url: '', key: '', userOverridden: false };
+}
 
 export function cloudInit(): void {
   try {
-    const s = JSON.parse(localStorage.getItem('babycare_cloud') || '{}');
-    if (s.url && s.key) {
-      cfg = { url: s.url, key: s.key };
-      enabled = true;
-    }
+    localOnly = localStorage.getItem(LS_LOCAL_ONLY) === '1';
   } catch { /* ignore */ }
+  if (localOnly) {
+    enabled = false;
+    return;
+  }
+  const c = resolveConfig();
+  if (c.url && c.key) {
+    cfg = { url: c.url, key: c.key };
+    enabled = true;
+  }
 }
 
 export function cloudSave(url: string, key: string): void {
-  cfg = { url: url.trim(), key: key.trim() };
-  localStorage.setItem('babycare_cloud', JSON.stringify(cfg));
-  enabled = !!(cfg.url && cfg.key);
+  const u = normalizeCloudUrl(url);
+  const k = key.trim();
+  if (!u || !k) {
+    // 清空：删除本地覆盖，回退到部署默认值（若默认值缺失则进入未配置态）
+    localStorage.removeItem('babycare_cloud');
+  } else {
+    localStorage.setItem('babycare_cloud', JSON.stringify({ url: u, key: k }));
+  }
+  cfg = { url: u, key: k };
+  enabled = !!(u && k);
+}
+
+/** 用户主动切换到纯本地模式（忽略部署默认值） */
+export function setLocalOnly(on: boolean): void {
+  localOnly = on;
+  if (on) {
+    localStorage.setItem(LS_LOCAL_ONLY, '1');
+    enabled = false;
+  } else {
+    localStorage.removeItem(LS_LOCAL_ONLY);
+    const c = resolveConfig();
+    enabled = !!(c.url && c.key);
+    if (enabled) cfg = { url: c.url, key: c.key };
+  }
+}
+
+export function isLocalOnly(): boolean {
+  return localOnly;
+}
+
+/** 当前是否为用户手动覆盖（用于「我的」页判断显示预置值还是用户值） */
+export function cloudUserOverridden(): boolean {
+  try {
+    const s = JSON.parse(localStorage.getItem('babycare_cloud') || '{}');
+    return !!(s.url && s.key);
+  } catch {
+    return false;
+  }
 }
 
 export function cloudEnabled(): boolean {
@@ -90,7 +159,8 @@ export async function cloudPush(db: DB): Promise<void> {
 }
 
 export async function cloudTest(url: string, key: string): Promise<string> {
-  const r = await fetch(`${url.trim()}/rest/v1/babies?select=id&limit=1`, {
+  const u = normalizeCloudUrl(url);
+  const r = await fetch(`${u}/rest/v1/babies?select=id&limit=1`, {
     headers: { apikey: key.trim(), Authorization: `Bearer ${key.trim()}` },
   });
   if (r.ok) return `✅ OK (HTTP ${r.status})`;

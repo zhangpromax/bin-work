@@ -3,12 +3,14 @@
 import React, { useRef, useState } from 'react';
 import { useStore } from '../lib/store';
 import { t } from '../lib/i18n';
-import { cloudUrl, cloudKey } from '../lib/cloud';
+import { cloudUrl, cloudKey, isLocalOnly } from '../lib/cloud';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY } from '../lib/config';
 
 export function MineView() {
-  const { cloudOn, saveCloudCfg, syncNow, testConn, closeCloud, loadSamples, clearData, exportData, importData, toast, theme, setTheme, isLoggedIn, currentUser, login, logout } = useStore();
-  const [url, setUrl] = useState(cloudUrl());
-  const [key, setKey] = useState(cloudKey());
+  const { cloudOn, saveCloudCfg, syncNow, testConn, closeCloud, setLocalMode, usingDefaultCloud, loadSamples, clearData, exportData, importData, toast, theme, setTheme, isLoggedIn, currentUser, login, logout } = useStore();
+  const [url, setUrl] = useState(cloudUrl() || DEFAULT_SUPABASE_URL);
+  const [key, setKey] = useState(cloudKey() || DEFAULT_SUPABASE_ANON_KEY);
+  const [localMode, setLocalModeState] = useState(isLocalOnly());
   const [testing, setTesting] = useState(false);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
@@ -40,25 +42,38 @@ export function MineView() {
       <div className="card">
         <h3><span className="ic">⚙️</span>{t('syncset')}</h3>
         <div className="mini">{t('synctip')}</div>
+        {usingDefaultCloud && (
+          <div className="mini" style={{ color: '#2E9B5B', marginBottom: 8 }}>
+            ✅ 已内置云端配置（部署者预置），无需修改；下方为只读展示。
+          </div>
+        )}
         <div className="row">
           <span className="muted">{t('tabmine') === 'Mine' ? 'Status' : '状态'}</span>
           <span className={cloudOn ? 'tag' : 'tag gray'}>{cloudOn ? t('syncon') : t('syncoff')}</span>
         </div>
-        <label>Supabase URL</label>
-        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" />
-        <label>anon key</label>
-        <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="eyJ..." />
-        <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-          <button className="btn" onClick={() => saveCloudCfg(url, key)}>{t('save')}</button>
-          <button className="btn ghost" onClick={() => syncNow()}>🔄 {t('tabmine') === 'Mine' ? 'Sync Now' : '立即同步'}</button>
-        </div>
+        <label>Supabase URL{usingDefaultCloud ? '（内置）' : ''}</label>
+        <input value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://xxxx.supabase.co" readOnly={usingDefaultCloud} />
+        <label>anon key{usingDefaultCloud ? '（内置）' : ''}</label>
+        <input value={key} onChange={(e) => setKey(e.target.value)} placeholder="eyJ..." readOnly={usingDefaultCloud} />
+        {!usingDefaultCloud && (
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn" onClick={() => saveCloudCfg(url, key)}>{t('save')}</button>
+            <button className="btn ghost" onClick={() => syncNow()}>🔄 {t('tabmine') === 'Mine' ? 'Sync Now' : '立即同步'}</button>
+          </div>
+        )}
         <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
-          <button className="btn ghost" disabled={testing} onClick={async () => {
-            setTesting(true);
-            try { toast(await testConn(url, key)); } catch (e) { toast('❌ 网络/CORS 错误：' + (e instanceof Error ? e.message : '失败')); }
-            setTesting(false);
-          }}>🩺 {t('tabmine') === 'Mine' ? 'Test Connection' : '测试连接'}</button>
-          <button className="btn ghost" onClick={closeCloud}>{t('cancel')}</button>
+          {!usingDefaultCloud && (
+            <button className="btn ghost" disabled={testing} onClick={async () => {
+              setTesting(true);
+              try { toast(await testConn(url, key)); } catch (e) { toast('❌ 网络/CORS 错误：' + (e instanceof Error ? e.message : '失败')); }
+              setTesting(false);
+            }}>🩺 {t('tabmine') === 'Mine' ? 'Test Connection' : '测试连接'}</button>
+          )}
+          <button className="btn ghost" onClick={() => {
+            const next = !localMode;
+            setLocalModeState(next);
+            setLocalMode(next);
+          }}>{localMode ? '☁ 启用云端' : '📱 仅本地模式'}</button>
         </div>
       </div>
 

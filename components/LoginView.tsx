@@ -2,54 +2,142 @@
 
 import React, { useState } from 'react';
 import { CapyLogo } from './Capy';
-import { mockLogin } from '../lib/auth';
+import {
+  cloudConfigured,
+  testCloudConn,
+  loginEmail,
+  signupEmail,
+  signInWechat,
+  SaSession,
+} from '../lib/auth';
+import { cloudSave } from '../lib/cloud';
+import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from '../lib/config';
 
-/** 测试用登录页：手机号+验证码 / 微信授权，本地模拟登录，不依赖后端 */
-export function LoginView({ onLogin }: { onLogin: (phone?: string) => void }) {
-  const [tab, setTab] = useState<'phone' | 'wechat'>('phone');
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
-  const [count, setCount] = useState(0);
+export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void }) {
+  // 部署时若已预置默认值，普通用户无需填云端配置，直接进入登录/注册
+  const [configured, setConfigured] = useState(cloudConfigured() || hasDefaultCloud());
+
+  // 配置表单（仅当无任何可用配置时出现，且预填默认值，几乎不用手改）
+  const [url, setUrl] = useState(DEFAULT_SUPABASE_URL);
+  const [key, setKey] = useState(DEFAULT_SUPABASE_ANON_KEY);
+  const [cfgMsg, setCfgMsg] = useState('');
+  const [savingCfg, setSavingCfg] = useState(false);
+
+  // 登录/注册
+  const [mode, setMode] = useState<'login' | 'register'>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [err, setErr] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  function getCode() {
-    if (!/^1\d{10}$/.test(phone)) {
-      setErr('请输入正确的 11 位手机号');
+  function saveCfg() {
+    setCfgMsg('');
+    if (!url.trim() || !key.trim()) {
+      setCfgMsg('❌ 请填写 URL 和 anon key');
       return;
     }
-    setErr('');
-    setSent(true);
-    setCount(60);
-    const timer = setInterval(() => {
-      setCount((c) => {
-        if (c <= 1) {
-          clearInterval(timer);
-          return 0;
+    cloudSave(url, key);
+    setSavingCfg(true);
+    testCloudConn()
+      .then((msg) => {
+        if (msg.startsWith('✅')) {
+          setCfgMsg('✅ 配置已保存，Supabase 连接正常');
+          setConfigured(true);
+        } else {
+          setCfgMsg(msg);
         }
-        return c - 1;
-      });
-    }, 1000);
+      })
+      .catch((e) => setCfgMsg('❌ 网络/CORS 错误：' + (e.message || 'Failed to fetch')))
+      .finally(() => setSavingCfg(false));
   }
 
-  function loginByPhone() {
-    if (!/^1\d{10}$/.test(phone)) {
-      setErr('请输入正确的 11 位手机号');
+  async function submit() {
+    setErr('');
+    if (!email.trim() || !password) {
+      setErr('请输入邮箱和密码');
       return;
     }
-    if (code.trim() !== '1234') {
-      setErr('测试验证码为 1234');
-      return;
+    setLoading(true);
+    if (mode === 'register') {
+      if (password.length < 6) {
+        setErr('密码至少 6 位');
+        setLoading(false);
+        return;
+      }
+      if (password !== confirm) {
+        setErr('两次输入的密码不一致');
+        setLoading(false);
+        return;
+      }
+      const res = await signupEmail(email, password);
+      setLoading(false);
+      if (res.error) {
+        setErr(res.error);
+        return;
+      }
+      if (res.session) onLogin(res.session);
+    } else {
+      const res = await loginEmail(email, password);
+      setLoading(false);
+      if (res.error) {
+        setErr(res.error);
+        return;
+      }
+      if (res.session) onLogin(res.session);
     }
-    mockLogin(phone);
-    onLogin(phone);
   }
 
-  function loginByWechat() {
-    mockLogin('wechat');
-    onLogin('wechat');
+  function wechatLogin() {
+    const r = signInWechat();
+    if (r.error) setErr(r.error);
   }
 
+  // 未配置 Supabase：先引导配置
+  if (!configured) {
+    return (
+      <div className="login">
+        <div className="login-hero">
+          <CapyLogo size={92} />
+          <h1 className="login-title">水豚噜噜</h1>
+          <p className="login-sub">宝宝成长记录 · 欢迎回家</p>
+        </div>
+
+        <div className="login-card">
+          <h3 style={{ margin: '0 0 14px', color: '#5A3E2B' }}>🌩 连接云端</h3>
+          <p className="login-tip" style={{ marginBottom: 12 }}>
+            本应用已内置云端配置，正常情况下无需填写。若打开仍是此页，说明部署时未预置 Supabase 信息，需由部署者配置（已为你预填，直接点保存即可）。
+          </p>
+
+          <div className="login-form">
+            <label>Supabase URL</label>
+            <input
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://xxxxx.supabase.co"
+            />
+            <label>anon key</label>
+            <input
+              value={key}
+              onChange={(e) => setKey(e.target.value)}
+              placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+              type="password"
+            />
+            {cfgMsg && (
+              <div className="login-err" style={{ color: cfgMsg.startsWith('✅') ? '#2E9B5B' : undefined }}>
+                {cfgMsg}
+              </div>
+            )}
+            <button className="btn login-btn" onClick={saveCfg} disabled={savingCfg}>
+              {savingCfg ? '测试中...' : '保存并测试连接'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 已配置：登录 / 注册
   return (
     <div className="login">
       <div className="login-hero">
@@ -60,66 +148,55 @@ export function LoginView({ onLogin }: { onLogin: (phone?: string) => void }) {
 
       <div className="login-card">
         <div className="login-seg">
-          <button
-            className={'ls ' + (tab === 'phone' ? 'on' : '')}
-            onClick={() => {
-              setTab('phone');
-              setErr('');
-            }}
-          >
-            手机号登录
+          <button className={'ls ' + (mode === 'login' ? 'on' : '')} onClick={() => { setMode('login'); setErr(''); }}>
+            登录
           </button>
-          <button
-            className={'ls ' + (tab === 'wechat' ? 'on' : '')}
-            onClick={() => {
-              setTab('wechat');
-              setErr('');
-            }}
-          >
-            微信授权
+          <button className={'ls ' + (mode === 'register' ? 'on' : '')} onClick={() => { setMode('register'); setErr(''); }}>
+            注册
           </button>
         </div>
 
-        {tab === 'phone' && (
-          <div className="login-form">
-            <label>手机号</label>
-            <input
-              value={phone}
-              onChange={(e) => setPhone(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="请输入 11 位手机号"
-              inputMode="numeric"
-              maxLength={11}
-            />
-            <label>验证码</label>
-            <div className="code-row">
+        <div className="login-form">
+          <label>邮箱</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="your@email.com"
+          />
+          <label>密码</label>
+          <input
+            type="password"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="至少 6 位"
+          />
+          {mode === 'register' && (
+            <>
+              <label>确认密码</label>
               <input
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/[^0-9]/g, ''))}
-                placeholder="测试验证码 1234"
-                inputMode="numeric"
-                maxLength={6}
+                type="password"
+                value={confirm}
+                onChange={(e) => setConfirm(e.target.value)}
+                placeholder="再输一次密码"
               />
-              <button className="btn sm code-btn" disabled={count > 0} onClick={getCode}>
-                {count > 0 ? `${count}s` : sent ? '重新发送' : '获取验证码'}
-              </button>
-            </div>
-            {err && <div className="login-err">{err}</div>}
-            <button className="btn login-btn" onClick={loginByPhone}>
-              登录
-            </button>
-            <p className="login-tip">测试模式：验证码固定为 1234，无需真实短信</p>
-          </div>
-        )}
+            </>
+          )}
+          {err && <div className="login-err">{err}</div>}
+          <button className="btn login-btn" onClick={submit} disabled={loading}>
+            {loading ? '处理中...' : mode === 'login' ? '登录' : '注册并登录'}
+          </button>
 
-        {tab === 'wechat' && (
-          <div className="login-form">
-            <p className="login-tip center">点击下方按钮模拟微信授权登录</p>
-            <button className="btn wx-btn" onClick={loginByWechat}>
-              <span className="wx-ic">💬</span> 微信授权登录
-            </button>
-            <p className="login-tip">测试模式：点击即登录，不跳转微信</p>
+          <div style={{ textAlign: 'center', margin: '12px 0 4px', color: '#A08C82', fontSize: 12 }}>
+            或使用第三方登录
           </div>
-        )}
+          <button className="btn wx-btn" onClick={wechatLogin}>
+            <span className="wx-ic">💬</span> 微信授权登录
+          </button>
+          <p className="login-tip center">
+            首次使用先点「注册」创建账号。
+          </p>
+        </div>
       </div>
     </div>
   );
