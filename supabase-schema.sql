@@ -138,3 +138,16 @@ alter table "medicines" disable row level security;
 alter table "medicals" disable row level security;
 alter table "weights" disable row level security;
 alter table "consumptions" disable row level security;
+
+-- 前端操作日志（登录/注册/忘记密码/同步等关键行为）
+create table if not exists "operation_logs" (
+  "id" text primary key,
+  "userId" text not null default '',
+  "action" text not null default '',
+  "detail" text not null default '',
+  "ip" text not null default '',
+  "userAgent" text not null default '',
+  "createdAt" bigint not null default 0
+);
+create index if not exists idx_operation_logs_user ON "operation_logs" ("userId", "createdAt" desc);
+alter table "operation_logs" disable row level security;

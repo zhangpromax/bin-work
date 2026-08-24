@@ -176,6 +176,68 @@ export async function loginEmail(emailRaw: string, password: string): Promise<Au
   }
 }
 
+/** 发送邮箱验证码（忘记密码 / OTP） */
+export async function sendEmailOtp(emailRaw: string): Promise<AuthRes> {
+  const { url, key } = cfg();
+  if (!url || !key) return { error: '请先配置 Supabase（URL 与 anon key）' };
+  const email = emailRaw.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error: '请输入正确的邮箱地址' };
+  try {
+    const r = await fetch(`${url}/auth/v1/otp`, {
+      method: 'POST',
+      headers: headers(key),
+      body: JSON.stringify({ email, channel: 'email', options: { shouldCreateUser: false } }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.message || `发送失败 (HTTP ${r.status})` };
+    return {};
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
+/** 校验邮箱验证码（OTP） */
+export async function verifyEmailOtp(emailRaw: string, token: string): Promise<AuthRes> {
+  const { url, key } = cfg();
+  if (!url || !key) return { error: '请先配置 Supabase（URL 与 anon key）' };
+  const email = emailRaw.trim().toLowerCase();
+  if (!token.trim()) return { error: '请输入验证码' };
+  try {
+    const r = await fetch(`${url}/auth/v1/verify`, {
+      method: 'POST',
+      headers: headers(key),
+      body: JSON.stringify({ email, token: token.trim(), type: 'email' }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.message || `验证失败 (HTTP ${r.status})` };
+    const session = toSession(j);
+    setSession(session);
+    return { session };
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
+/** 修改当前登录用户的密码 */
+export async function updatePassword(newPassword: string): Promise<AuthRes> {
+  const { url, key } = cfg();
+  const s = getSession();
+  if (!url || !key || !s) return { error: '请先登录' };
+  if (newPassword.length < 6) return { error: '密码至少 6 位' };
+  try {
+    const r = await fetch(`${url}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { ...headers(key), Authorization: `Bearer ${s.access_token}` },
+      body: JSON.stringify({ password: newPassword }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.message || `修改失败 (HTTP ${r.status})` };
+    return {};
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
 export interface AuthRes {
   session?: SaSession;
   error?: string;

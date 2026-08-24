@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { CapyLogo } from './Capy';
 import {
   cloudConfigured,
@@ -8,10 +8,16 @@ import {
   loginEmail,
   signupEmail,
   signInWechat,
+  sendEmailOtp,
+  verifyEmailOtp,
+  updatePassword,
   SaSession,
 } from '../lib/auth';
 import { cloudSave } from '../lib/cloud';
+import { logOperation } from '../lib/logs';
 import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from '../lib/config';
+
+type Mode = 'login' | 'register' | 'forgot' | 'forgot-verify' | 'forgot-reset';
 
 export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void }) {
   // 部署时若已预置默认值，普通用户无需填云端配置，直接进入登录/注册
@@ -23,13 +29,40 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
   const [cfgMsg, setCfgMsg] = useState('');
   const [savingCfg, setSavingCfg] = useState(false);
 
-  // 登录/注册
-  const [mode, setMode] = useState<'login' | 'register'>('login');
+  // 视图模式
+  const [mode, setMode] = useState<Mode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
+  const [otp, setOtp] = useState('');
   const [err, setErr] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // 所有提示/弹窗内容 1 秒后自动关闭
+  useEffect(() => {
+    if (!err && !success && !cfgMsg) return;
+    const t = setTimeout(() => {
+      setErr('');
+      setSuccess('');
+      setCfgMsg('');
+    }, 1000);
+    return () => clearTimeout(t);
+  }, [err, success, cfgMsg]);
+
+  function showError(msg: string) {
+    setErr(msg);
+  }
+
+  function showSuccess(msg: string) {
+    setSuccess(msg);
+  }
+
+  function switchMode(next: Mode) {
+    setMode(next);
+    setErr('');
+    setSuccess('');
+  }
 
   function saveCfg() {
     setCfgMsg('');
@@ -52,58 +85,147 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       .finally(() => setSavingCfg(false));
   }
 
-  async function submit() {
+  async function submitLogin() {
     setErr('');
+    setSuccess('');
     if (!email.trim() || !password) {
-      setErr('请输入邮箱和密码');
+      showError('请输入邮箱和密码');
       return;
     }
     setLoading(true);
-    if (mode === 'register') {
-      if (password.length < 6) {
-        setErr('密码至少 6 位');
-        setLoading(false);
-        return;
-      }
-      if (password !== confirm) {
-        setErr('两次输入的密码不一致');
-        setLoading(false);
-        return;
-      }
-      const res = await signupEmail(email, password);
-      setLoading(false);
-      if (res.error) {
-        setErr(res.error);
-        return;
-      }
-      if (res.session) onLogin(res.session);
-    } else {
-      const res = await loginEmail(email, password);
-      setLoading(false);
-      if (res.error) {
-        setErr(res.error);
-        return;
-      }
-      if (res.session) onLogin(res.session);
+    const res = await loginEmail(email, password);
+    setLoading(false);
+    if (res.error) {
+      showError(res.error);
+      logOperation('login_fail', res.error);
+      return;
     }
+    if (res.session) {
+      logOperation('login_ok', `email=${email}`);
+      onLogin(res.session);
+    }
+  }
+
+  async function submitRegister() {
+    setErr('');
+    setSuccess('');
+    if (!email.trim() || !password) {
+      showError('请输入邮箱和密码');
+      return;
+    }
+    if (password.length < 6) {
+      showError('密码至少 6 位');
+      return;
+    }
+    if (password !== confirm) {
+      showError('两次输入的密码不一致');
+      return;
+    }
+    setLoading(true);
+    const res = await signupEmail(email, password);
+    setLoading(false);
+    if (res.error) {
+      showError(res.error);
+      logOperation('register_fail', res.error);
+      return;
+    }
+    logOperation('register_ok', `email=${email}`);
+    if (res.session) {
+      showSuccess('注册成功');
+      setTimeout(() => onLogin(res.session), 1000);
+    } else {
+      showSuccess('注册已提交，请查收邮件');
+      setTimeout(() => switchMode('login'), 1000);
+    }
+  }
+
+  async function sendForgotCode() {
+    setErr('');
+    setSuccess('');
+    if (!email.trim()) {
+      showError('请输入邮箱');
+      return;
+    }
+    setLoading(true);
+    const res = await sendEmailOtp(email);
+    setLoading(false);
+    if (res.error) {
+      showError(res.error);
+      logOperation('forgot_send_fail', res.error);
+      return;
+    }
+    logOperation('forgot_send_ok', `email=${email}`);
+    showSuccess('验证码已发送，请查收邮件');
+    setOtp('');
+    switchMode('forgot-verify');
+  }
+
+  async function verifyForgotCode() {
+    setErr('');
+    setSuccess('');
+    if (!otp.trim()) {
+      showError('请输入验证码');
+      return;
+    }
+    setLoading(true);
+    const res = await verifyEmailOtp(email, otp);
+    setLoading(false);
+    if (res.error) {
+      showError(res.error);
+      logOperation('forgot_verify_fail', res.error);
+      return;
+    }
+    logOperation('forgot_verify_ok', `email=${email}`);
+    showSuccess('验证码校验通过');
+    setPassword('');
+    setConfirm('');
+    switchMode('forgot-reset');
+  }
+
+  async function submitResetPassword() {
+    setErr('');
+    setSuccess('');
+    if (!password) {
+      showError('请输入新密码');
+      return;
+    }
+    if (password.length < 6) {
+      showError('密码至少 6 位');
+      return;
+    }
+    if (password !== confirm) {
+      showError('两次输入的密码不一致');
+      return;
+    }
+    setLoading(true);
+    const res = await updatePassword(password);
+    setLoading(false);
+    if (res.error) {
+      showError(res.error);
+      logOperation('reset_password_fail', res.error);
+      return;
+    }
+    logOperation('reset_password_ok', `email=${email}`);
+    showSuccess('密码修改成功');
+    setTimeout(() => switchMode('login'), 1000);
   }
 
   function wechatLogin() {
     const r = signInWechat();
-    if (r.error) setErr(r.error);
+    if (r.error) showError(r.error);
   }
 
   // 未配置 Supabase：先引导配置
   if (!configured) {
     return (
       <div className="login">
-      <div className="login-hero">
-        <CapyLogo size={92} />
-        <h1 className="login-title">水豚噜噜</h1>
-      </div>
+        <div className="login-hero">
+          <CapyLogo size={92} />
+          <h1 className="login-title">水豚噜噜</h1>
+        </div>
 
-      <div className="login-card">
-        <h3 style={{ margin: '0 0 14px', color: '#5A3E2B' }}>🌩 连接云端</h3>
+        <div className="login-card">
+          <h3 style={{ margin: '0 0 14px', color: '#5A3E2B' }}>🌩 连接云端</h3>
           <p className="login-tip" style={{ marginBottom: 12 }}>
             本应用已内置云端配置，正常情况下无需填写。若打开仍是此页，说明部署时未预置 Supabase 信息，需由部署者配置（已为你预填，直接点保存即可）。
           </p>
@@ -122,9 +244,14 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
               type="password"
             />
-            {cfgMsg && (
-              <div className="login-err" style={{ color: cfgMsg.startsWith('✅') ? '#2E9B5B' : undefined }}>
-                {cfgMsg}
+            {(cfgMsg || err || success) && (
+              <div
+                className="login-msg"
+                style={{
+                  color: err ? 'var(--red)' : success ? '#2E9B5B' : cfgMsg?.startsWith('✅') ? '#2E9B5B' : 'var(--red)',
+                }}
+              >
+                {err || success || cfgMsg}
               </div>
             )}
             <button className="btn login-btn" onClick={saveCfg} disabled={savingCfg}>
@@ -136,72 +263,228 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
     );
   }
 
-  // 已配置：登录 / 注册
-  return (
-    <div className="login">
-      <div className="login-hero">
-        <CapyLogo size={92} />
-        <h1 className="login-title">水豚噜噜</h1>
-      </div>
+  // 登录视图
+  if (mode === 'login') {
+    return (
+      <div className="login">
+        <div className="login-hero">
+          <CapyLogo size={92} />
+          <h1 className="login-title">水豚噜噜</h1>
+        </div>
 
-      <div className="login-card">
-        <div className="login-form">
-          <label>邮箱</label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            placeholder="your@email.com"
-          />
-          <label>密码</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            placeholder="至少 6 位"
-          />
-          {mode === 'register' && (
-            <>
-              <label>确认密码</label>
-              <input
-                type="password"
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value)}
-                placeholder="再输一次密码"
-              />
-            </>
-          )}
-          {err && <div className="login-err">{err}</div>}
-          <button className="btn login-btn" onClick={submit} disabled={loading}>
-            {loading ? '处理中...' : mode === 'login' ? '登录' : '注册并登录'}
-          </button>
-
-          <div className="login-links">
-            <button
-              type="button"
-              className="login-link"
-              onClick={() => { setMode(mode === 'register' ? 'login' : 'register'); setErr(''); }}
-            >
-              {mode === 'register' ? '已有账号？返回登录' : '注册入口'}
+        <div className="login-card">
+          <div className="login-form">
+            <label>邮箱</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+            />
+            <label>密码</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="至少 6 位"
+            />
+            {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+            <button className="btn login-btn" onClick={submitLogin} disabled={loading}>
+              {loading ? '处理中...' : '登录'}
             </button>
-            {mode === 'login' && (
+
+            <div className="login-links">
+              <button type="button" className="login-link" onClick={() => switchMode('register')}>
+                注册
+              </button>
               <div className="login-forgot">
-                <button type="button" className="login-link" onClick={() => setErr('忘记密码功能开发中，请通过邮箱验证重置')}>
-                  忘记密码入口
+                <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
+                  忘记密码
                 </button>
                 <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
               </div>
-            )}
-          </div>
+            </div>
 
-          <button className="btn wx-btn" onClick={wechatLogin}>
-            <span className="wx-ic">💬</span> 微信授权登录
-          </button>
-          <p className="login-tip center">
-            首次使用请先注册创建账号。
-          </p>
+            <button className="btn wx-btn" onClick={wechatLogin}>
+              <span className="wx-ic">💬</span> 微信授权登录
+            </button>
+            <p className="login-tip center">首次使用请先注册创建账号。</p>
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  }
+
+  // 注册视图
+  if (mode === 'register') {
+    return (
+      <div className="login">
+        <div className="login-hero">
+          <CapyLogo size={92} />
+          <h1 className="login-title">水豚噜噜</h1>
+        </div>
+
+        <div className="login-card">
+          <div className="login-form">
+            <h3 style={{ margin: '0 0 12px', color: '#5A3E2B', textAlign: 'center' }}>注册账号</h3>
+            <label>邮箱</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+            />
+            <label>密码</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="至少 6 位"
+            />
+            <label>确认密码</label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="再输一次密码"
+            />
+            {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+            <button className="btn login-btn" onClick={submitRegister} disabled={loading}>
+              {loading ? '处理中...' : '注册'}
+            </button>
+
+            <div className="login-links" style={{ justifyContent: 'center', marginTop: 14 }}>
+              <button type="button" className="login-link" onClick={() => switchMode('login')}>
+                已有账号？返回登录
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 忘记密码：输入邮箱
+  if (mode === 'forgot') {
+    return (
+      <div className="login">
+        <div className="login-hero">
+          <CapyLogo size={92} />
+          <h1 className="login-title">水豚噜噜</h1>
+        </div>
+
+        <div className="login-card">
+          <div className="login-form">
+            <h3 style={{ margin: '0 0 12px', color: '#5A3E2B', textAlign: 'center' }}>忘记密码</h3>
+            <p className="login-tip center" style={{ marginBottom: 12 }}>
+              输入邮箱后获取验证码，通过邮箱校验后设置新密码。
+            </p>
+            <label>邮箱</label>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+            />
+            {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+            <button className="btn login-btn" onClick={sendForgotCode} disabled={loading}>
+              {loading ? '发送中...' : '获取验证码'}
+            </button>
+
+            <div className="login-links" style={{ justifyContent: 'center', marginTop: 14 }}>
+              <button type="button" className="login-link" onClick={() => switchMode('login')}>
+                返回登录
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 忘记密码：输入验证码
+  if (mode === 'forgot-verify') {
+    return (
+      <div className="login">
+        <div className="login-hero">
+          <CapyLogo size={92} />
+          <h1 className="login-title">水豚噜噜</h1>
+        </div>
+
+        <div className="login-card">
+          <div className="login-form">
+            <h3 style={{ margin: '0 0 12px', color: '#5A3E2B', textAlign: 'center' }}>填写验证码</h3>
+            <p className="login-tip center" style={{ marginBottom: 12 }}>
+              验证码已发送至 {email}
+            </p>
+            <label>验证码</label>
+            <input
+              type="text"
+              value={otp}
+              onChange={(e) => setOtp(e.target.value)}
+              placeholder="邮箱中收到的 6 位验证码"
+              maxLength={8}
+            />
+            {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+            <button className="btn login-btn" onClick={verifyForgotCode} disabled={loading}>
+              {loading ? '校验中...' : '校验验证码'}
+            </button>
+
+            <div className="login-links" style={{ justifyContent: 'space-between', marginTop: 14 }}>
+              <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
+                重新发送
+              </button>
+              <button type="button" className="login-link" onClick={() => switchMode('login')}>
+                返回登录
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // 忘记密码：设置新密码
+  if (mode === 'forgot-reset') {
+    return (
+      <div className="login">
+        <div className="login-hero">
+          <CapyLogo size={92} />
+          <h1 className="login-title">水豚噜噜</h1>
+        </div>
+
+        <div className="login-card">
+          <div className="login-form">
+            <h3 style={{ margin: '0 0 12px', color: '#5A3E2B', textAlign: 'center' }}>设置新密码</h3>
+            <label>新密码</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="至少 6 位"
+            />
+            <label>确认新密码</label>
+            <input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              placeholder="再输一次新密码"
+            />
+            {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+            <button className="btn login-btn" onClick={submitResetPassword} disabled={loading}>
+              {loading ? '保存中...' : '修改密码'}
+            </button>
+
+            <div className="login-links" style={{ justifyContent: 'center', marginTop: 14 }}>
+              <button type="button" className="login-link" onClick={() => switchMode('login')}>
+                返回登录
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return null;
 }

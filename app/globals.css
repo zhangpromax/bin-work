@@ -223,7 +223,12 @@ label { font-size: 13px; color: #8a756a; display: block; margin-top: 12px; }
 .code-row input { flex: 1; }
 .code-btn { white-space: nowrap; margin-top: 6px; }
 .login-btn { margin-top: 18px; }
-.login-err { color: var(--red); font-size: 13px; margin-top: 8px; }
+.login-msg {
+  font-size: 13px; margin-top: 10px; padding: 8px 10px;
+  border-radius: 8px; text-align: center; min-height: 34px;
+}
+.login-msg.err { color: var(--red); background: #FFF0EF; }
+.login-msg.ok { color: #2E9B5B; background: #EEF8F2; }
 .login-tip { color: #A08C82; font-size: 12px; margin-top: 10px; }
 .login-tip.center { text-align: center; }
 .wx-btn { margin-top: 14px; background: #07C160; }
