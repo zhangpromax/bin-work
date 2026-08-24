@@ -227,11 +227,13 @@ label { font-size: 13px; color: #8a756a; display: block; margin-top: 12px; }
   display: block; font-size: 12px; color: #A08C82;
   margin-top: 4px; line-height: 1.3;
 }
-.code-row { display: flex; gap: 8px; align-items: flex-end; }
-.code-row input { flex: 2 1 0; min-width: 0; }
+.code-row { display: flex; gap: 8px; align-items: stretch; }
+.code-row input { flex: 2 1 0; min-width: 0; margin-top: 6px; }
 .code-row .code-btn {
   flex: 1 1 0; white-space: nowrap;
-  padding: 10px 6px; font-size: 13px;
+  padding: 0 6px; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+  margin-top: 6px;
 }
 .login-btn { margin-top: 18px; }
 .pwd-input-wrap { position: relative; }
