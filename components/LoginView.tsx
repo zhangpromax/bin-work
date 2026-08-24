@@ -19,6 +19,38 @@ import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from
 
 type Mode = 'login' | 'register' | 'forgot';
 
+function PasswordInput({
+  value,
+  onChange,
+  placeholder,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder?: string;
+}) {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="pwd-input-wrap">
+      <input
+        type="text"
+        value={value}
+        onChange={onChange}
+        placeholder={placeholder}
+        className={show ? '' : 'pwd-hidden'}
+        autoComplete="new-password"
+      />
+      <button
+        type="button"
+        className="pwd-toggle"
+        onClick={() => setShow((s) => !s)}
+        tabIndex={-1}
+      >
+        {show ? '隐藏' : '显示'}
+      </button>
+    </div>
+  );
+}
+
 export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void }) {
   // 部署时若已预置默认值，普通用户无需填云端配置，直接进入登录/注册
   const [configured, setConfigured] = useState(cloudConfigured() || hasDefaultCloud());
@@ -39,6 +71,21 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  // 倒计时清理
+  useEffect(() => {
+    if (countdown <= 0) return;
+    const t = setInterval(() => {
+      setCountdown((c) => {
+        if (c <= 1) {
+          clearInterval(t);
+          return 0;
+        }
+        return c - 1;
+      });
+    }, 1000);
+    return () => clearInterval(t);
+  }, [countdown]);
 
   // 所有提示/弹窗内容 1 秒后自动关闭
   useEffect(() => {
@@ -164,15 +211,6 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
     showSuccess('验证码已发送，请查收邮件');
     setOtp('');
     setCountdown(60);
-    const timer = setInterval(() => {
-      setCountdown((c) => {
-        if (c <= 1) {
-          clearInterval(timer);
-          return 0;
-        }
-        return c - 1;
-      });
-    }, 1000);
   }
 
   async function submitForgotReset() {
@@ -239,11 +277,10 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
               placeholder="https://xxxxx.supabase.co"
             />
             <label>anon key</label>
-            <input
+            <PasswordInput
               value={key}
               onChange={(e) => setKey(e.target.value)}
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-              type="password"
             />
             {(cfgMsg || err || success) && (
               <div
@@ -283,8 +320,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
               placeholder="your@email.com"
             />
             <label>密码</label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="至少 6 位"
@@ -336,15 +372,13 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
               placeholder="your@email.com"
             />
             <label>密码</label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="至少 6 位"
             />
             <label>确认密码</label>
-            <input
-              type="password"
+            <PasswordInput
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="再输一次密码"
@@ -411,16 +445,14 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
             </div>
 
             <label>新密码</label>
-            <input
-              type="password"
+            <PasswordInput
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="请输入新的登录密码"
             />
 
             <label>确认密码</label>
-            <input
-              type="password"
+            <PasswordInput
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
               placeholder="再次确认密码"
