@@ -159,6 +159,25 @@ export async function cloudPush(db: DB): Promise<void> {
   if (failed) throw new Error(`push_failed:${failed}`);
 }
 
+/** 删除云端某个宝宝及其全部关联数据；本地已删，push 不会自动删云端，必须显式调 DELETE */
+export async function cloudDeleteBaby(babyId: string): Promise<void> {
+  if (!enabled) return;
+  const h = { apikey: cfg.key, Authorization: `Bearer ${cfg.key}` };
+  const tables = ['feedings', 'diapers', 'sleeps', 'temps', 'medicines', 'medicals', 'weights', 'consumptions', 'babies'];
+  for (const tb of tables) {
+    try {
+      const col = tb === 'babies' ? 'id' : 'babyId';
+      const r = await fetch(`${cfg.url}/rest/v1/${tb}?${col}=eq.${encodeURIComponent(babyId)}`, {
+        method: 'DELETE',
+        headers: h,
+      });
+      if (!r.ok && r.status !== 404) {
+        // 允许不存在；其他错误继续处理下一张表
+      }
+    } catch { /* best effort */ }
+  }
+}
+
 export async function cloudTest(url: string, key: string): Promise<string> {
   const u = apiBaseUrl();
   const r = await fetch(`${u}/rest/v1/babies?select=id&limit=1`, {
