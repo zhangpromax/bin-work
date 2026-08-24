@@ -1,7 +1,7 @@
 /**
  * Cloudflare Pages Functions 反向代理
  * 浏览器/手机 -> https://bin-work.pages.dev/api/xxx
- * Cloudflare 服务器 -> https://kltqzleqiqykvpilcckr.supabase.co/xxx
+ * Cloudflare 服务器 -> https://mbhvjtbtatphgnhoqlye.supabase.co/xxx
  *
  * 作用：绕过中国大陆对 supabase.co 子域名的 DNS 污染/阻断。
  * 终端用户只需能访问 bin-work.pages.dev，由 Cloudflare 代为请求 Supabase。

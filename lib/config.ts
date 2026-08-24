@@ -29,7 +29,7 @@ export const DEFAULT_SUPABASE_ANON_KEY =
  *
  * 返回形如：
  *   线上 -> https://bin-work.pages.dev/api
- *   本地 -> https://kltqzleqiqykvpilcckr.supabase.co
+ *   本地 -> https://mbhvjtbtatphgnhoqlye.supabase.co
  */
 export function apiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_SUPABASE_URL;

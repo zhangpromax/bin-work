@@ -97,14 +97,13 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
   if (!configured) {
     return (
       <div className="login">
-        <div className="login-hero">
-          <CapyLogo size={92} />
-          <h1 className="login-title">水豚噜噜</h1>
-          <p className="login-sub">宝宝成长记录 · 欢迎回家</p>
-        </div>
+      <div className="login-hero">
+        <CapyLogo size={92} />
+        <h1 className="login-title">水豚噜噜</h1>
+      </div>
 
-        <div className="login-card">
-          <h3 style={{ margin: '0 0 14px', color: '#5A3E2B' }}>🌩 连接云端</h3>
+      <div className="login-card">
+        <h3 style={{ margin: '0 0 14px', color: '#5A3E2B' }}>🌩 连接云端</h3>
           <p className="login-tip" style={{ marginBottom: 12 }}>
             本应用已内置云端配置，正常情况下无需填写。若打开仍是此页，说明部署时未预置 Supabase 信息，需由部署者配置（已为你预填，直接点保存即可）。
           </p>
@@ -143,19 +142,9 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       <div className="login-hero">
         <CapyLogo size={92} />
         <h1 className="login-title">水豚噜噜</h1>
-        <p className="login-sub">宝宝成长记录 · 欢迎回家</p>
       </div>
 
       <div className="login-card">
-        <div className="login-seg">
-          <button className={'ls ' + (mode === 'login' ? 'on' : '')} onClick={() => { setMode('login'); setErr(''); }}>
-            登录
-          </button>
-          <button className={'ls ' + (mode === 'register' ? 'on' : '')} onClick={() => { setMode('register'); setErr(''); }}>
-            注册
-          </button>
-        </div>
-
         <div className="login-form">
           <label>邮箱</label>
           <input
@@ -187,14 +176,29 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
             {loading ? '处理中...' : mode === 'login' ? '登录' : '注册并登录'}
           </button>
 
-          <div style={{ textAlign: 'center', margin: '12px 0 4px', color: '#A08C82', fontSize: 12 }}>
-            或使用第三方登录
+          <div className="login-links">
+            <button
+              type="button"
+              className="login-link"
+              onClick={() => { setMode(mode === 'register' ? 'login' : 'register'); setErr(''); }}
+            >
+              {mode === 'register' ? '已有账号？返回登录' : '注册入口'}
+            </button>
+            {mode === 'login' && (
+              <div className="login-forgot">
+                <button type="button" className="login-link" onClick={() => setErr('忘记密码功能开发中，请通过邮箱验证重置')}>
+                  忘记密码入口
+                </button>
+                <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
+              </div>
+            )}
           </div>
+
           <button className="btn wx-btn" onClick={wechatLogin}>
             <span className="wx-ic">💬</span> 微信授权登录
           </button>
           <p className="login-tip center">
-            首次使用先点「注册」创建账号。
+            首次使用请先注册创建账号。
           </p>
         </div>
       </div>
