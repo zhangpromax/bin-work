@@ -11,6 +11,8 @@ import {
   sendEmailOtp,
   verifyEmailOtp,
   updatePassword,
+  sendOtp,
+  verifyOtp,
   SaSession,
 } from '../lib/auth';
 import { cloudSave } from '../lib/cloud';
@@ -18,6 +20,16 @@ import { logOperation } from '../lib/logs';
 import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from '../lib/config';
 
 type Mode = 'login' | 'register' | 'forgot';
+
+const LS_ACCOUNT = 'babycare_remember_account';
+
+function readRemembered(): { email?: string; phone?: string } {
+  try {
+    return JSON.parse(localStorage.getItem(LS_ACCOUNT) || '{}');
+  } catch {
+    return {};
+  }
+}
 
 function isDevHost() {
   if (typeof window === 'undefined') return false;
@@ -69,7 +81,10 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
 
   // 视图模式
   const [mode, setMode] = useState<Mode>('login');
+  // 登录方式：邮箱密码 / 手机验证码
+  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [otp, setOtp] = useState('');
@@ -77,6 +92,21 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [countdown, setCountdown] = useState(0);
+
+  // 该设备登录过的账号自动填充，免手输
+  useEffect(() => {
+    const r = readRemembered();
+    if (r.email) setEmail(r.email);
+    if (r.phone) setPhone(r.phone);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  function rememberAccount() {
+    try {
+      const r = readRemembered();
+      localStorage.setItem(LS_ACCOUNT, JSON.stringify({ ...r, email: email.trim(), phone: phone.trim() }));
+    } catch { /* ignore */ }
+  }
 
   // 倒计时清理
   useEffect(() => {
@@ -160,6 +190,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       return;
     }
     if (res.session) {
+      rememberAccount();
       logOperation('login_ok', `email=${email}`);
       onLogin(res.session);
     }
@@ -194,11 +225,60 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
     }
     logOperation('register_ok', `email=${email}`);
     if (res.session) {
+      rememberAccount();
       showSuccess('注册成功');
       setTimeout(() => onLogin(res.session), 1000);
     } else {
       showSuccess('注册已提交，请查收邮件');
       setTimeout(() => switchMode('login'), 1000);
+    }
+  }
+
+  // 手机验证码登录/注册
+  async function sendPhoneCode() {
+    setErr('');
+    setSuccess('');
+    if (!phone.trim()) {
+      showError('请输入手机号');
+      return;
+    }
+    setLoading(true);
+    const res = await sendOtp(phone);
+    setLoading(false);
+    if (res.error) {
+      showError(res.error);
+      logOperation('phone_send_fail', res.error);
+      return;
+    }
+    logOperation('phone_send_ok', `phone=${phone}`);
+    showSuccess('验证码已发送，请查收短信');
+    setOtp('');
+    setCountdown(60);
+  }
+
+  async function submitPhoneLogin() {
+    setErr('');
+    setSuccess('');
+    if (isDevHost()) {
+      onLogin();
+      return;
+    }
+    if (!phone.trim() || !otp.trim()) {
+      showError('请输入手机号和验证码');
+      return;
+    }
+    setLoading(true);
+    const res = await verifyOtp(phone, otp);
+    setLoading(false);
+    if (res.error) {
+      showError(res.error);
+      logOperation('phone_login_fail', res.error);
+      return;
+    }
+    if (res.session) {
+      rememberAccount();
+      logOperation('phone_login_ok', `phone=${phone}`);
+      onLogin(res.session);
     }
   }
 
@@ -330,40 +410,95 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
 
         <div className="login-card">
           <div className="login-form">
-            <label>邮箱</label>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-            />
-            <label>密码</label>
-            <PasswordInput
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              placeholder="至少 6 位"
-            />
-            {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
-            <button className="btn login-btn" onClick={submitLogin} disabled={loading}>
-              {loading ? '处理中...' : '登录'}
-            </button>
-
-            <div className="login-links">
-              <button type="button" className="login-link" onClick={() => switchMode('register')}>
-                注册
+            <div className="method-tabs">
+              <button
+                type="button"
+                className={'mt ' + (authMethod === 'email' ? 'on' : '')}
+                onClick={() => { setAuthMethod('email'); setErr(''); setSuccess(''); }}
+              >
+                邮箱登录
               </button>
-              <div className="login-forgot">
-                <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
-                  忘记密码
-                </button>
-                <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
-              </div>
+              <button
+                type="button"
+                className={'mt ' + (authMethod === 'phone' ? 'on' : '')}
+                onClick={() => { setAuthMethod('phone'); setErr(''); setSuccess(''); }}
+              >
+                手机验证码
+              </button>
             </div>
+
+            {authMethod === 'email' ? (
+              <>
+                <label>邮箱</label>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                />
+                <label>密码</label>
+                <PasswordInput
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="至少 6 位"
+                />
+                {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+                <button className="btn login-btn" onClick={submitLogin} disabled={loading}>
+                  {loading ? '处理中...' : '登录'}
+                </button>
+
+                <div className="login-links">
+                  <button type="button" className="login-link" onClick={() => switchMode('register')}>
+                    注册
+                  </button>
+                  <div className="login-forgot">
+                    <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
+                      忘记密码
+                    </button>
+                    <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
+                  </div>
+                </div>
+              </>
+            ) : (
+              <>
+                <label>手机号</label>
+                <input
+                  type="tel"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  placeholder="请输入 11 位手机号"
+                  maxLength={11}
+                />
+                <label>验证码</label>
+                <div className="code-row">
+                  <input
+                    type="text"
+                    value={otp}
+                    onChange={(e) => setOtp(e.target.value)}
+                    placeholder="请输入短信验证码"
+                    maxLength={8}
+                  />
+                  <button
+                    type="button"
+                    className="btn code-btn"
+                    onClick={sendPhoneCode}
+                    disabled={loading || countdown > 0}
+                  >
+                    {countdown > 0 ? `${countdown}s 后重发` : '获取验证码'}
+                  </button>
+                </div>
+                {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+                <button className="btn login-btn" onClick={submitPhoneLogin} disabled={loading}>
+                  {loading ? '处理中...' : '登录'}
+                </button>
+                <p className="login-tip center">未注册的手机号验证通过后将自动注册</p>
+              </>
+            )}
 
             <button className="btn wx-btn" onClick={wechatLogin}>
               <span className="wx-ic">💬</span> 微信授权登录
             </button>
-            <p className="login-tip center">首次使用请先注册创建账号。</p>
+            {authMethod === 'email' && <p className="login-tip center">首次使用请先注册创建账号。</p>}
           </div>
         </div>
       </div>
