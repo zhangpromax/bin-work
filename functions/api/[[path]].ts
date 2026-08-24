@@ -7,7 +7,7 @@
  * 终端用户只需能访问 bin-work.pages.dev，由 Cloudflare 代为请求 Supabase。
  */
 
-const SUPABASE_URL = 'https://kltqzleqiqykvpilcckr.supabase.co';
+const SUPABASE_URL = 'https://mbhvjtbtatphgnhoqlye.supabase.co';
 
 // 本地类型声明，避免依赖 @cloudflare/workers-types（Next build 不会处理 functions 目录的类型）
 type PagesFunction = (context: {

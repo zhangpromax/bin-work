@@ -15,11 +15,11 @@ const ENV_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
 const ENV_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // 👇👇👇 开发者：把你的 Supabase 项目值填到下面两行即可（留空则走 env / 让用户填）
-const SUPABASE_ORIGIN = 'https://kltqzleqiqykvpilcckr.supabase.co';
+const SUPABASE_ORIGIN = 'https://mbhvjtbtatphgnhoqlye.supabase.co';
 export const DEFAULT_SUPABASE_URL = ENV_URL || SUPABASE_ORIGIN;
 export const DEFAULT_SUPABASE_ANON_KEY =
   ENV_KEY ||
-  'sb_publishable_VL9vkmCSna-o1bqksfUvOg_lLzIbhDW';
+  'sb_publishable_eBsqAzAworCaPjW1Pa3BWg_F0QlJE0L';
 
 /**
  * 智能解析实际请求的 API 基地址：
