@@ -186,7 +186,7 @@ export async function sendEmailOtp(emailRaw: string): Promise<AuthRes> {
     const r = await fetch(`${url}/auth/v1/otp`, {
       method: 'POST',
       headers: headers(key),
-      body: JSON.stringify({ email, channel: 'email', options: { shouldCreateUser: false } }),
+      body: JSON.stringify({ email, options: { shouldCreateUser: false } }),
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return { error: j.msg || j.message || `发送失败 (HTTP ${r.status})` };

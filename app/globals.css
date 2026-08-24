@@ -205,6 +205,14 @@ label { font-size: 13px; color: #8a756a; display: block; margin-top: 12px; }
 .login-title { font-size: 24px; margin: 14px 0 4px; color: var(--text); font-weight: 700; }
 .login-card { background: var(--card); border-radius: var(--radius); box-shadow: var(--shadow); padding: 22px 18px 18px; }
 .login-form label { margin-top: 10px; }
+.login-card-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 12px;
+}
+.login-card-header h3 {
+  margin: 0; color: var(--text); font-size: 18px; font-weight: 700;
+}
+.login-card-header .login-link { font-size: 14px; }
 .login-links {
   display: flex; align-items: flex-start; justify-content: space-between;
   margin: 18px 0 12px;
