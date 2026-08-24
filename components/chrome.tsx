@@ -16,20 +16,33 @@ export function Toast() {
   );
 }
 
-export function Header() {
-  const { cloudOn } = useStore();
+export function Header({ tab }: { tab: Tab }) {
+  const { currentUser, setMineSub } = useStore();
+  const isMine = tab === 'mine';
+
+  // 仅在「我的」页显示顶部橙卡（作为个人资料入口）；其他 tab 不再显示
+  if (!isMine) return null;
+
+  const name = currentUser?.name || currentUser?.email || currentUser?.phone || '我的账号';
+  const account = currentUser?.phone
+    ? (currentUser.phone.startsWith('+86') ? currentUser.phone.slice(3) : currentUser.phone)
+    : (currentUser?.email || '点击编辑个人资料');
   return (
-    <header className="top">
+    <header className="top user-profile-entry" onClick={() => setMineSub('userprofile')}>
       <div className="brand">
-        <CapyLogo />
+        {currentUser?.avatar ? (
+          <img className="user-avatar-lg" src={currentUser.avatar} alt="avatar" />
+        ) : (
+          <div className="user-avatar-lg">🐹</div>
+        )}
         <div className="brand-text">
-          <h1>{t('title')}</h1>
+          <h1>{name}</h1>
           <div className="sub">
-            <span>{t('subtitle')}</span>
-            {cloudOn ? <span className="syncbar ok">● {t('cloudSync')}</span> : null}
+            <span>{account}</span>
           </div>
         </div>
       </div>
+      <span className="profile-arrow">›</span>
     </header>
   );
 }

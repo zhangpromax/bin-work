@@ -30,7 +30,7 @@ function App() {
 
   return (
     <div className={`app theme-${theme}`}>
-      <Header />
+      <Header tab={tab} />
       {tab === 'home' && (
         <HomeView onEditBaby={(id) => setModal({ kind: 'baby', id })} onOpenBaby={() => setModal({ kind: 'baby' })} />
       )}

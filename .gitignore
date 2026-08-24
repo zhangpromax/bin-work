@@ -17,3 +17,7 @@ gif2png.js
 _check.html
 _prod.html
 _build.log
+start-dev.bat
+dev.err
+_prod_check.html
+_trash/

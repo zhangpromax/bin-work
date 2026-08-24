@@ -36,6 +36,10 @@ function isDevHost() {
   return h === 'localhost' || h === '127.0.0.1' || h.startsWith('192.168.') || h.startsWith('10.');
 }
 
+function isEmailVal(s: string) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s.trim());
+}
+
 function PasswordInput({
   value,
   onChange,
@@ -80,11 +84,8 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
 
   // 视图模式
   const [mode, setMode] = useState<Mode>('login');
-  // 登录方式：邮箱密码 / 手机验证码
-  const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
-  const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
-  const [phonePwd, setPhonePwd] = useState('');
+  // 登录账号：邮箱或手机号均可
+  const [account, setAccount] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [otp, setOtp] = useState('');
@@ -96,15 +97,15 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
   // 该设备登录过的账号自动填充，免手输
   useEffect(() => {
     const r = readRemembered();
-    if (r.email) setEmail(r.email);
-    if (r.phone) setPhone(r.phone);
+    if (r.email) setAccount(r.email);
+    else if (r.phone) setAccount(r.phone);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function rememberAccount() {
     try {
-      const r = readRemembered();
-      localStorage.setItem(LS_ACCOUNT, JSON.stringify({ ...r, email: email.trim(), phone: phone.trim() }));
+      // 仅记住原值，下次直接回填到账号框（邮箱或手机号都行）
+      localStorage.setItem(LS_ACCOUNT, JSON.stringify({ email: '', phone: account.trim() }));
     } catch { /* ignore */ }
   }
 
@@ -170,6 +171,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       .finally(() => setSavingCfg(false));
   }
 
+  // 登录：账号框填邮箱或手机号均可
   async function submitLogin() {
     setErr('');
     setSuccess('');
@@ -177,12 +179,15 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       onLogin();
       return;
     }
-    if (!email.trim() || !password) {
-      showError('请输入邮箱和密码');
+    if (!account.trim() || !password) {
+      showError('请输入账号和密码');
       return;
     }
+    const acc = account.trim();
     setLoading(true);
-    const res = await loginEmail(email, password);
+    const res = isEmailVal(acc)
+      ? await loginEmail(acc, password)
+      : await loginPhone(acc, password);
     setLoading(false);
     if (res.error) {
       showError(res.error);
@@ -191,7 +196,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
     }
     if (res.session) {
       rememberAccount();
-      logOperation('login_ok', `email=${email}`);
+      logOperation('login_ok', isEmailVal(acc) ? `email=${acc}` : `phone=${acc}`);
       onLogin(res.session);
     }
   }
@@ -203,8 +208,12 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       onLogin();
       return;
     }
-    if (!email.trim() || !password) {
+    if (!account.trim() || !password) {
       showError('请输入邮箱和密码');
+      return;
+    }
+    if (!isEmailVal(account.trim())) {
+      showError('注册请使用邮箱');
       return;
     }
     if (password.length < 6) {
@@ -216,14 +225,14 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       return;
     }
     setLoading(true);
-    const res = await signupEmail(email, password);
+    const res = await signupEmail(account.trim(), password);
     setLoading(false);
     if (res.error) {
       showError(res.error);
       logOperation('register_fail', res.error);
       return;
     }
-    logOperation('register_ok', `email=${email}`);
+    logOperation('register_ok', `email=${account.trim()}`);
     if (res.session) {
       rememberAccount();
       showSuccess('注册成功');
@@ -234,53 +243,26 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
     }
   }
 
-  // 手机号+密码登录
-  async function submitPhoneLogin() {
-    setErr('');
-    setSuccess('');
-    if (isDevHost()) {
-      onLogin();
-      return;
-    }
-    if (!phone.trim() || !phonePwd) {
-      showError('请输入手机号和密码');
-      return;
-    }
-    setLoading(true);
-    const res = await loginPhone(phone, phonePwd);
-    setLoading(false);
-    if (res.error) {
-      showError(res.error);
-      logOperation('phone_login_fail', res.error);
-      return;
-    }
-    if (res.session) {
-      rememberAccount();
-      logOperation('phone_login_ok', `phone=${phone}`);
-      onLogin(res.session);
-    }
-  }
-
   async function sendForgotCode() {
     setErr('');
     setSuccess('');
-    if (!email.trim()) {
+    if (!account.trim()) {
       showError('请输入邮箱');
       return;
     }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    if (!isEmailVal(account.trim())) {
       showError('请输入正确的邮箱地址');
       return;
     }
     setLoading(true);
-    const res = await sendEmailOtp(email);
+    const res = await sendEmailOtp(account.trim());
     setLoading(false);
     if (res.error) {
       showError(res.error);
       logOperation('forgot_send_fail', res.error);
       return;
     }
-    logOperation('forgot_send_ok', `email=${email}`);
+    logOperation('forgot_send_ok', `email=${account.trim()}`);
     showSuccess('验证码已发送，请查收邮件');
     setOtp('');
     setCountdown(60);
@@ -289,7 +271,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
   async function submitForgotReset() {
     setErr('');
     setSuccess('');
-    if (!email.trim() || !otp.trim() || !password || !confirm) {
+    if (!account.trim() || !otp.trim() || !password || !confirm) {
       showError('请填写完整信息');
       return;
     }
@@ -302,14 +284,14 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       return;
     }
     setLoading(true);
-    const verifyRes = await verifyEmailOtp(email, otp);
+    const verifyRes = await verifyEmailOtp(account.trim(), otp);
     if (verifyRes.error) {
       setLoading(false);
       showError(verifyRes.error);
       logOperation('forgot_verify_fail', verifyRes.error);
       return;
     }
-    logOperation('forgot_verify_ok', `email=${email}`);
+    logOperation('forgot_verify_ok', `email=${account.trim()}`);
     const updateRes = await updatePassword(password);
     setLoading(false);
     if (updateRes.error) {
@@ -317,7 +299,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       logOperation('reset_password_fail', updateRes.error);
       return;
     }
-    logOperation('reset_password_ok', `email=${email}`);
+    logOperation('reset_password_ok', `email=${account.trim()}`);
     showSuccess('密码修改成功');
     setTimeout(() => switchMode('login'), 1000);
   }
@@ -389,90 +371,47 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
 
         <div className="login-card">
           <div className="login-form">
-            <div className="method-tabs">
-              <button
-                type="button"
-                className={'mt ' + (authMethod === 'email' ? 'on' : '')}
-                onClick={() => { setAuthMethod('email'); setErr(''); setSuccess(''); }}
-              >
-                邮箱登录
+            <label>账号（邮箱或手机号）</label>
+            <input
+              type="text"
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
+              placeholder="your@email.com 或 手机号"
+            />
+            <label>密码</label>
+            <PasswordInput
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="至少 6 位"
+            />
+            {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
+            <button className="btn login-btn" onClick={submitLogin} disabled={loading}>
+              {loading ? '处理中...' : '登录'}
+            </button>
+
+            <div className="login-links">
+              <button type="button" className="login-link" onClick={() => switchMode('register')}>
+                注册
               </button>
-              <button
-                type="button"
-                className={'mt ' + (authMethod === 'phone' ? 'on' : '')}
-                onClick={() => { setAuthMethod('phone'); setErr(''); setSuccess(''); }}
-              >
-                手机号登录
-              </button>
+              <div className="login-forgot">
+                <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
+                  忘记密码
+                </button>
+                <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
+              </div>
             </div>
-
-            {authMethod === 'email' ? (
-              <>
-                <label>邮箱</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="your@email.com"
-                />
-                <label>密码</label>
-                <PasswordInput
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="至少 6 位"
-                />
-                {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
-                <button className="btn login-btn" onClick={submitLogin} disabled={loading}>
-                  {loading ? '处理中...' : '登录'}
-                </button>
-
-                <div className="login-links">
-                  <button type="button" className="login-link" onClick={() => switchMode('register')}>
-                    注册
-                  </button>
-                  <div className="login-forgot">
-                    <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
-                      忘记密码
-                    </button>
-                    <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
-                  </div>
-                </div>
-              </>
-            ) : (
-              <>
-                <label>手机号</label>
-                <input
-                  type="tel"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="请输入 11 位手机号"
-                  maxLength={11}
-                />
-                <label>密码</label>
-                <PasswordInput
-                  value={phonePwd}
-                  onChange={(e) => setPhonePwd(e.target.value)}
-                  placeholder="请输入密码"
-                />
-                {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
-                <button className="btn login-btn" onClick={submitPhoneLogin} disabled={loading}>
-                  {loading ? '处理中...' : '登录'}
-                </button>
-                <p className="login-tip center">手机号需先在「我的」页绑定到邮箱账号</p>
-              </>
-            )}
 
             <button className="btn wx-btn" onClick={wechatLogin}>
               <span className="wx-ic">💬</span> 微信授权登录
             </button>
-            {authMethod === 'email' && <p className="login-tip center">首次使用请先注册创建账号。</p>}
+            <p className="login-tip center">首次使用请先注册创建账号，之后可绑定手机号用手机号登录。</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // 注册视图
+  // 注册视图（邮箱注册）
   if (mode === 'register') {
     return (
       <div className="login">
@@ -487,8 +426,8 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
             <label>邮箱</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
               placeholder="your@email.com"
             />
             <label>密码</label>
@@ -540,8 +479,8 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
             <label>邮箱</label>
             <input
               type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={account}
+              onChange={(e) => setAccount(e.target.value)}
               placeholder="请输入邮箱"
             />
 

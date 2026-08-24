@@ -13,7 +13,7 @@ import {
 } from './cloud';
 import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from './config';
 import { getLang, setLang as i18nSetLang, Lang, toggleLang as i18nToggle } from './i18n';
-import { signOut, getSession, mockLogin, setSession, SaSession } from './auth';
+import { signOut, getSession, mockLogin, setSession, SaSession, updateProfile as authUpdateProfile } from './auth';
 import { logOperation } from './logs';
 
 function uid(): string {
@@ -40,14 +40,18 @@ interface StoreCtx {
   clearToast: () => void;
   // 用户资料
   saveProfile: (patch: Partial<Profile>) => void;
+  updateProfile: (patch: { name?: string; avatar?: string }) => Promise<void>;
   toggleLang: () => void;
   setTheme: (t: Theme) => void;
   // 登录/登出
   isLoggedIn: boolean;
-  currentUser: { phone?: string; email?: string } | null;
+  currentUser: { phone?: string; email?: string; name?: string; avatar?: string } | null;
   login: (session?: SaSession) => void;
   loginWithSession: () => void;
   logout: () => void;
+  // 我的页子视图（供全局 Header 点击进入个人资料）
+  mineSub: 'main' | 'sync' | 'userprofile';
+  setMineSub: (sub: 'main' | 'sync' | 'userprofile') => void;
   // 通用增删改
   upsertRow: (table: TableName, row: Record<string, unknown>) => void;
   deleteRow: (table: TableName, id: string) => void;
@@ -131,9 +135,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const dbRef = useRef<DB>(db);
   dbRef.current = db;
   const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!getSession());
-  const [currentUser, setCurrentUser] = useState<{ phone?: string; email?: string } | null>(() => {
+  const [currentUser, setCurrentUser] = useState<{ phone?: string; email?: string; name?: string; avatar?: string } | null>(() => {
     const s = getSession();
-    return s ? { phone: s.user?.phone, email: s.user?.email } : null;
+    return s ? {
+      phone: s.user?.phone,
+      email: s.user?.email,
+      name: s.user?.user_metadata?.display_name as string | undefined,
+      avatar: s.user?.user_metadata?.avatar_url as string | undefined,
+    } : null;
   });
 
 const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -416,13 +425,37 @@ const saveProfile = (patch: Partial<Profile>) => {
     else mockLogin();
     const s = getSession();
     setIsLoggedIn(true);
-    setCurrentUser(s ? { phone: s.user?.phone, email: s.user?.email } : null);
+    setCurrentUser(s ? {
+      phone: s.user?.phone,
+      email: s.user?.email,
+      name: s.user?.user_metadata?.display_name as string | undefined,
+      avatar: s.user?.user_metadata?.avatar_url as string | undefined,
+    } : null);
   };
 
   const loginWithSession = () => {
     const s = getSession();
     setIsLoggedIn(true);
-    setCurrentUser(s ? { phone: s.user?.phone, email: s.user?.email } : null);
+    setCurrentUser(s ? {
+      phone: s.user?.phone,
+      email: s.user?.email,
+      name: s.user?.user_metadata?.display_name as string | undefined,
+      avatar: s.user?.user_metadata?.avatar_url as string | undefined,
+    } : null);
+  };
+
+  // 更新当前登录用户的个人资料（昵称 / 头像），写入 Supabase user_metadata（与业务数据分离、按账号独立）
+  const updateProfile = async (patch: { name?: string; avatar?: string }) => {
+    const res = await authUpdateProfile({ display_name: patch.name, avatar_url: patch.avatar });
+    if (res.error) { toast(res.error); return; }
+    const s = getSession();
+    setCurrentUser(s ? {
+      phone: s.user?.phone,
+      email: s.user?.email,
+      name: s.user?.user_metadata?.display_name as string | undefined,
+      avatar: s.user?.user_metadata?.avatar_url as string | undefined,
+    } : null);
+    toast('资料已保存 ✓');
   };
 
   const logout = () => {
@@ -432,10 +465,14 @@ const saveProfile = (patch: Partial<Profile>) => {
     toast('已退出登录');
   };
 
+  // 我的页子视图状态（全局 Header 在 mine tab 点击进入个人资料）
+  const [mineSub, setMineSub] = useState<'main' | 'sync' | 'userprofile'>('main');
+
   const value: StoreCtx = {
     db, lang, cloudOn, theme, toastMsg, toast, clearToast, toggleLang, setTheme,
-    saveProfile,
+    saveProfile, updateProfile,
     isLoggedIn, currentUser, login, loginWithSession, logout,
+    mineSub, setMineSub,
     upsertRow, deleteRow, deleteBabyCascade, saveMedicalRow, deleteMedicalRow, doseMed,
     saveCloudCfg, syncNow, testConn, closeCloud, setLocalMode, usingDefaultCloud,
     loadSamples, clearData, exportData, importData,

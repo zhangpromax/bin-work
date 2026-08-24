@@ -287,6 +287,38 @@ export async function bindPhone(phoneRaw: string): Promise<AuthRes> {
   }
 }
 
+/**
+ * 更新当前登录用户的个人资料（昵称 / 头像），写入 Supabase auth.user_metadata。
+ * 这两个字段与业务数据分离，按账号各自独立、多设备同步。
+ */
+export async function updateProfile(patch: {
+  display_name?: string;
+  avatar_url?: string;
+}): Promise<AuthRes> {
+  const { url, key } = cfg();
+  const s = getSession();
+  if (!url || !key || !s) return { error: '请先登录' };
+  try {
+    const r = await fetch(`${url}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { ...headers(key), Authorization: `Bearer ${s.access_token}` },
+      // Supabase 用顶层 data 字段合并进 user_metadata
+      body: JSON.stringify({ data: patch }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.message || `更新失败 (HTTP ${r.status})` };
+    // 同步刷新本地 session 的 user_metadata
+    const s2 = getSession();
+    if (s2) {
+      const um = { ...(s2.user.user_metadata || {}), ...patch };
+      setSession({ ...s2, user: { ...s2.user, user_metadata: um } });
+    }
+    return {};
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
 export interface AuthRes {
   session?: SaSession;
   error?: string;
