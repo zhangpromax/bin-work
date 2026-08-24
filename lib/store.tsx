@@ -136,43 +136,36 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     return s ? { phone: s.user?.phone, email: s.user?.email } : null;
   });
 
-const toast = (msg: string) => setToastMsg({ msg, id: Date.now() });
-const clearToast = () => setToastMsg(null);
+const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+const toast = (msg: string) => {
+  if (toastTimer.current) clearTimeout(toastTimer.current);
+  setToastMsg({ msg, id: Date.now() });
+  toastTimer.current = setTimeout(() => setToastMsg(null), 1000);
+};
+const clearToast = () => {
+  if (toastTimer.current) clearTimeout(toastTimer.current);
+  setToastMsg(null);
+};
 const saveProfile = (patch: Partial<Profile>) => {
   const next: DB = { ...db, profile: { ...db.profile, ...patch } };
   setDb(next);
-  persist(next);
+  schedulePush(next);
 };
 
-  const persist = (nextDb: DB) => {
-    localStorage.setItem('babycare_db', JSON.stringify(nextDb));
+  // 正式环境：业务数据不落本地，只走云端；保留 theme/auth/cloud 配置等 UI 偏好
+  const schedulePush = (nextDb: DB) => {
     if (pushTimer.current) clearTimeout(pushTimer.current);
     pushTimer.current = setTimeout(() => {
       cloudPush(dbRef.current).catch(() => undefined);
     }, 400);
   };
 
-  // 启动
+  // 启动：业务数据完全来自云端，本地不再缓存 babycare_db（清除旧缓存避免回源）
   useEffect(() => {
-    try {
-      const s = localStorage.getItem('babycare_db');
-      if (s) {
-        const parsed = JSON.parse(s) as DB;
-        setDb(parsed);
-        if (cloudEnabled()) {
-          cloudPull(parsed).then((merged) => {
-            localStorage.setItem('babycare_db', JSON.stringify(merged));
-            setDb(merged);
-            cloudPush(merged).catch(() => undefined);
-          });
-        }
-      } else if (cloudEnabled()) {
-        cloudPull(EMPTY_DB).then((merged) => {
-          localStorage.setItem('babycare_db', JSON.stringify(merged));
-          setDb(merged);
-        });
-      }
-    } catch { /* ignore */ }
+    try { localStorage.removeItem('babycare_db'); } catch { /* ignore */ }
+    if (cloudEnabled()) {
+      cloudPull(EMPTY_DB).then((merged) => setDb(merged));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -184,7 +177,7 @@ const saveProfile = (patch: Partial<Profile>) => {
         ? arr.map((x) => (x.id === row.id ? { ...x, ...row, updatedAt: Date.now() } : x))
         : [...arr, { ...row, createdAt: Date.now(), updatedAt: Date.now() }];
       const nextDb = { ...prev, [table]: nextArr } as unknown as DB;
-      persist(nextDb);
+      schedulePush(nextDb);
       return nextDb;
     });
   };
@@ -193,7 +186,7 @@ const saveProfile = (patch: Partial<Profile>) => {
     setDb((prev) => {
       const arr = prev[table] as unknown as any[];
       const nextDb = { ...prev, [table]: arr.filter((x) => x.id !== id) } as unknown as DB;
-      persist(nextDb);
+      schedulePush(nextDb);
       return nextDb;
     });
   };
@@ -209,7 +202,6 @@ const saveProfile = (patch: Partial<Profile>) => {
       ['feedings', 'diapers', 'sleeps', 'temps', 'medicines', 'medicals', 'weights', 'consumptions'].forEach((tb) => {
         (nextDb as any)[tb] = ((prev as any)[tb]).filter((x: any) => x.babyId !== babyId);
       });
-      localStorage.setItem('babycare_db', JSON.stringify(nextDb));
       dbRef.current = nextDb;
       return nextDb;
     });
@@ -244,7 +236,7 @@ const saveProfile = (patch: Partial<Profile>) => {
       }
       const { db: d2, m: m2 } = syncConsumption({ ...prev, medicals }, medical, lang);
       const nextDb = { ...d2, medicals: d2.medicals.map((m) => (m.id === m2.id ? m2 : m)) };
-      persist(nextDb);
+      schedulePush(nextDb);
       return nextDb;
     });
   };
@@ -255,7 +247,7 @@ const saveProfile = (patch: Partial<Profile>) => {
       let consumptions = prev.consumptions;
       if (m && m.syncedId) consumptions = consumptions.filter((c) => c.id !== m.syncedId);
       const nextDb = { ...prev, medicals: prev.medicals.filter((x) => x.id !== id), consumptions } as DB;
-      persist(nextDb);
+      schedulePush(nextDb);
       return nextDb;
     });
   };
@@ -270,7 +262,7 @@ const saveProfile = (patch: Partial<Profile>) => {
         return { ...m, doses: { ...m.doses, [today]: got + 1 }, updatedAt: Date.now() };
       });
       const nextDb = { ...prev, medicines } as DB;
-      persist(nextDb);
+      schedulePush(nextDb);
       return nextDb;
     });
   };
@@ -284,7 +276,6 @@ const saveProfile = (patch: Partial<Profile>) => {
       try {
         let merged = dbRef.current;
         merged = await cloudPull(merged);
-        localStorage.setItem('babycare_db', JSON.stringify(merged));
         await cloudPush(merged);
         setDb(merged);
         toast('云端已同步 ✓');
@@ -301,7 +292,6 @@ const saveProfile = (patch: Partial<Profile>) => {
     toast('正在同步…');
     try {
       let merged = await cloudPull(dbRef.current);
-      localStorage.setItem('babycare_db', JSON.stringify(merged));
       await cloudPush(merged);
       setDb(merged);
       toast('已同步 ✓');
@@ -357,7 +347,7 @@ const saveProfile = (patch: Partial<Profile>) => {
       const weights: Weight[] = [...prev.weights, { id: uid(), babyId: bid, date: today, weight: '7.2', createdAt: ts, updatedAt: ts }];
       const consumptions: Consumption[] = [...prev.consumptions, { id: uid(), babyId: bid, category: 'catfood', amount: '358', date: today, note: lang === 'en' ? 'Formula' : '奶粉', source: 'manual', createdAt: ts, updatedAt: ts }];
       const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, consumptions };
-      persist(nextDb);
+      schedulePush(nextDb);
       return nextDb;
     });
   };
@@ -365,8 +355,23 @@ const saveProfile = (patch: Partial<Profile>) => {
   const clearData = () => {
     if (!confirm((lang === 'en' ? 'Clear all data?' : '确定清空所有数据？'))) return;
     const nextDb = JSON.parse(JSON.stringify(EMPTY_DB)) as DB;
-    persist(nextDb);
-    setDb(nextDb);
+    if (cloudOn) {
+      // 云端模式：直接清空云端所有表，避免本地删了云端残留
+      TABLES.forEach((tb) => {
+        fetch(`${cloudUrl()}/rest/v1/${tb}?id=neq.00000000-0000-0000-0000-000000000000`, {
+          method: 'DELETE',
+          headers: { apikey: cloudKey(), Authorization: `Bearer ${cloudKey()}` },
+        }).catch(() => undefined);
+      });
+      setTimeout(() => {
+        cloudPush(EMPTY_DB).catch(() => undefined);
+        setDb(nextDb);
+        toast('已清空云端数据');
+      }, 600);
+    } else {
+      setDb(nextDb);
+    }
+    schedulePush(nextDb);
   };
 
   const exportData = () => {
@@ -386,7 +391,7 @@ const saveProfile = (patch: Partial<Profile>) => {
         const d = JSON.parse(String(r.result)) as DB;
         const nextDb: DB = { ...JSON.parse(JSON.stringify(EMPTY_DB)), ...d };
         TABLES.forEach((tb) => { if (!Array.isArray(nextDb[tb])) (nextDb as any)[tb] = []; });
-        persist(nextDb);
+        schedulePush(nextDb);
         setDb(nextDb);
         toast('已导入');
       } catch { toast('文件格式错误'); }
