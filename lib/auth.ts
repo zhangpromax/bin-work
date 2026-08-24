@@ -176,6 +176,29 @@ export async function loginEmail(emailRaw: string, password: string): Promise<Au
   }
 }
 
+/** 手机号+密码登录（需先在「我的」页给邮箱账号绑定手机号） */
+export async function loginPhone(phoneRaw: string, password: string): Promise<AuthRes> {
+  const { url, key } = cfg();
+  if (!url || !key) return { error: '请先配置 Supabase（URL 与 anon key）' };
+  const phone = fullPhone(phoneRaw);
+  if (!/^\+86\d{11}$/.test(phone)) return { error: '请输入 11 位手机号' };
+  if (!password) return { error: '请输入密码' };
+  try {
+    const r = await fetch(`${url}/auth/v1/token?grant_type=password`, {
+      method: 'POST',
+      headers: headers(key),
+      body: JSON.stringify({ phone, password }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.error_description || j.message || `登录失败 (HTTP ${r.status})` };
+    const session = toSession(j);
+    setSession(session);
+    return { session };
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
 /** 发送邮箱验证码（忘记密码 / OTP） */
 export async function sendEmailOtp(emailRaw: string): Promise<AuthRes> {
   const { url, key } = cfg();
@@ -232,6 +255,32 @@ export async function updatePassword(newPassword: string): Promise<AuthRes> {
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return { error: j.msg || j.message || `修改失败 (HTTP ${r.status})` };
+    return {};
+  } catch (e) {
+    return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };
+  }
+}
+
+/** 给当前账号绑定手机号（绑定后可用手机号+密码登录） */
+export async function bindPhone(phoneRaw: string): Promise<AuthRes> {
+  const { url, key } = cfg();
+  const s = getSession();
+  if (!url || !key || !s) return { error: '请先登录' };
+  const phone = fullPhone(phoneRaw);
+  if (!/^\+86\d{11}$/.test(phone)) return { error: '请输入 11 位手机号' };
+  try {
+    const r = await fetch(`${url}/auth/v1/user`, {
+      method: 'PUT',
+      headers: { ...headers(key), Authorization: `Bearer ${s.access_token}` },
+      body: JSON.stringify({ phone }),
+    });
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok) return { error: j.msg || j.message || `绑定失败 (HTTP ${r.status})` };
+    // 更新本地 session 中的 phone
+    const s2 = getSession();
+    if (s2) {
+      setSession({ ...s2, user: { ...s2.user, phone } });
+    }
     return {};
   } catch (e) {
     return { error: '网络错误：' + (e instanceof Error ? e.message : '未知') };

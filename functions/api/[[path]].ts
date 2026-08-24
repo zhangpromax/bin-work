@@ -31,9 +31,12 @@ export const onRequest: PagesFunction = async (context) => {
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.set('host', new URL(SUPABASE_URL).host);
-  // 强制注入 apikey / Authorization，确保 Supabase 始终能鉴权
+  // 强制注入 apikey；Authorization 仅在客户端没带（登录/注册场景）时才补 anon key，
+  // 否则会覆盖前端带上的用户 token（绑定手机号/改密码/登出等接口会 401）
   headers.set('apikey', SUPABASE_ANON_KEY);
-  headers.set('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
+  if (!headers.get('Authorization')) {
+    headers.set('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
+  }
 
   // 重构请求体（GET/HEAD 无 body）
   const method = request.method.toUpperCase();

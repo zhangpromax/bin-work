@@ -6,13 +6,12 @@ import {
   cloudConfigured,
   testCloudConn,
   loginEmail,
+  loginPhone,
   signupEmail,
   signInWechat,
   sendEmailOtp,
   verifyEmailOtp,
   updatePassword,
-  sendOtp,
-  verifyOtp,
   SaSession,
 } from '../lib/auth';
 import { cloudSave } from '../lib/cloud';
@@ -85,6 +84,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
   const [authMethod, setAuthMethod] = useState<'email' | 'phone'>('email');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
+  const [phonePwd, setPhonePwd] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [otp, setOtp] = useState('');
@@ -234,28 +234,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
     }
   }
 
-  // 手机验证码登录/注册
-  async function sendPhoneCode() {
-    setErr('');
-    setSuccess('');
-    if (!phone.trim()) {
-      showError('请输入手机号');
-      return;
-    }
-    setLoading(true);
-    const res = await sendOtp(phone);
-    setLoading(false);
-    if (res.error) {
-      showError(res.error);
-      logOperation('phone_send_fail', res.error);
-      return;
-    }
-    logOperation('phone_send_ok', `phone=${phone}`);
-    showSuccess('验证码已发送，请查收短信');
-    setOtp('');
-    setCountdown(60);
-  }
-
+  // 手机号+密码登录
   async function submitPhoneLogin() {
     setErr('');
     setSuccess('');
@@ -263,12 +242,12 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
       onLogin();
       return;
     }
-    if (!phone.trim() || !otp.trim()) {
-      showError('请输入手机号和验证码');
+    if (!phone.trim() || !phonePwd) {
+      showError('请输入手机号和密码');
       return;
     }
     setLoading(true);
-    const res = await verifyOtp(phone, otp);
+    const res = await loginPhone(phone, phonePwd);
     setLoading(false);
     if (res.error) {
       showError(res.error);
@@ -423,7 +402,7 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
                 className={'mt ' + (authMethod === 'phone' ? 'on' : '')}
                 onClick={() => { setAuthMethod('phone'); setErr(''); setSuccess(''); }}
               >
-                手机验证码
+                手机号登录
               </button>
             </div>
 
@@ -469,29 +448,17 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
                   placeholder="请输入 11 位手机号"
                   maxLength={11}
                 />
-                <label>验证码</label>
-                <div className="code-row">
-                  <input
-                    type="text"
-                    value={otp}
-                    onChange={(e) => setOtp(e.target.value)}
-                    placeholder="请输入短信验证码"
-                    maxLength={8}
-                  />
-                  <button
-                    type="button"
-                    className="btn code-btn"
-                    onClick={sendPhoneCode}
-                    disabled={loading || countdown > 0}
-                  >
-                    {countdown > 0 ? `${countdown}s 后重发` : '获取验证码'}
-                  </button>
-                </div>
+                <label>密码</label>
+                <PasswordInput
+                  value={phonePwd}
+                  onChange={(e) => setPhonePwd(e.target.value)}
+                  placeholder="请输入密码"
+                />
                 {(err || success) && <div className={`login-msg ${err ? 'err' : 'ok'}`}>{err || success}</div>}
                 <button className="btn login-btn" onClick={submitPhoneLogin} disabled={loading}>
                   {loading ? '处理中...' : '登录'}
                 </button>
-                <p className="login-tip center">未注册的手机号验证通过后将自动注册</p>
+                <p className="login-tip center">手机号需先在「我的」页绑定到邮箱账号</p>
               </>
             )}
 
