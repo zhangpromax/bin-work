@@ -8,6 +8,8 @@
  */
 
 const SUPABASE_URL = 'https://mbhvjtbtatphgnhoqlye.supabase.co';
+// 在 Cloudflare 端强制注入密钥，保证 Supabase 始终收到 apikey（前端漏发/用旧 key 也不怕）
+const SUPABASE_ANON_KEY = 'sb_publishable_eBsqAzAworCaPjW1Pa3BWg_F0QlJE0L';
 
 // 本地类型声明，避免依赖 @cloudflare/workers-types（Next build 不会处理 functions 目录的类型）
 type PagesFunction = (context: {
@@ -29,6 +31,9 @@ export const onRequest: PagesFunction = async (context) => {
   const headers = new Headers(request.headers);
   headers.delete('host');
   headers.set('host', new URL(SUPABASE_URL).host);
+  // 强制注入 apikey / Authorization，确保 Supabase 始终能鉴权
+  headers.set('apikey', SUPABASE_ANON_KEY);
+  headers.set('Authorization', 'Bearer ' + SUPABASE_ANON_KEY);
 
   // 重构请求体（GET/HEAD 无 body）
   const method = request.method.toUpperCase();
