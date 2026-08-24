@@ -8,12 +8,13 @@ import {
   Medicine, Medical, Weight, Consumption, Profile,
 } from './types';
 import {
-  cloudInit, cloudPull, cloudPush, cloudEnabled, cloudSave,
+  cloudInit, cloudPull, cloudPush, cloudDeleteBaby, cloudEnabled, cloudSave,
   cloudUrl, cloudKey, cloudTest, setLocalOnly, isLocalOnly, cloudUserOverridden,
 } from './cloud';
 import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from './config';
 import { getLang, setLang as i18nSetLang, Lang, toggleLang as i18nToggle } from './i18n';
 import { signOut, getSession, mockLogin, setSession, SaSession } from './auth';
+import { logOperation } from './logs';
 
 function uid(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -197,15 +198,34 @@ const saveProfile = (patch: Partial<Profile>) => {
     });
   };
 
-  const deleteBabyCascade = (babyId: string) => {
+  const deleteBabyCascade = async (babyId: string) => {
+    // 取消待执行的自动 push，避免与删除流程的 push 冲突
+    if (pushTimer.current) {
+      clearTimeout(pushTimer.current);
+      pushTimer.current = null;
+    }
     setDb((prev) => {
       const nextDb = { ...prev, babies: prev.babies.filter((b) => b.id !== babyId) } as DB;
       ['feedings', 'diapers', 'sleeps', 'temps', 'medicines', 'medicals', 'weights', 'consumptions'].forEach((tb) => {
         (nextDb as any)[tb] = ((prev as any)[tb]).filter((x: any) => x.babyId !== babyId);
       });
-      persist(nextDb);
+      localStorage.setItem('babycare_db', JSON.stringify(nextDb));
+      dbRef.current = nextDb;
       return nextDb;
     });
+    if (cloudOn) {
+      try {
+        await cloudDeleteBaby(babyId);
+        await cloudPush(dbRef.current);
+        logOperation('delete_baby', `babyId=${babyId}`);
+        toast('已同步删除 ✓');
+      } catch (e) {
+        logOperation('delete_baby_fail', `babyId=${babyId};error=${e instanceof Error ? e.message : 'unknown'}`);
+        toast('云端删除失败：' + (e instanceof Error ? e.message : '请检查网络'));
+      }
+    } else {
+      logOperation('delete_baby_local', `babyId=${babyId}`);
+    }
   };
 
   const saveMedicalRow = (row: Partial<Medical> & { id?: string }) => {

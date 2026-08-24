@@ -248,6 +248,7 @@ export function BabyModal({ id, onClose }: { id?: string; onClose: () => void })
   const [gender, setGender] = useState(existing?.gender || 'male');
   const [note, setNote] = useState(existing?.note || '');
   const [avatar, setAvatar] = useState(existing?.avatar || '');
+  const [deleting, setDeleting] = useState(false);
 
   const onFile = (f: File) => {
     compressImage(f, 256).then((d) => setAvatar(d)).catch(() => toast('图片处理失败'));
@@ -265,11 +266,16 @@ export function BabyModal({ id, onClose }: { id?: string; onClose: () => void })
     onClose();
   };
 
-  const del = () => {
+  const del = async () => {
     if (!confirm(t('confirmclear'))) return;
-    if (existing) deleteBabyCascade(existing.id);
-    toast('已删除');
-    onClose();
+    if (!existing) return;
+    setDeleting(true);
+    try {
+      await deleteBabyCascade(existing.id);
+    } finally {
+      setDeleting(false);
+      onClose();
+    }
   };
 
   return (
@@ -290,7 +296,7 @@ export function BabyModal({ id, onClose }: { id?: string; onClose: () => void })
       <Seg options={[{ v: 'male', label: t('male') }, { v: 'female', label: t('female') }]} value={gender} onChange={(v) => setGender(v as 'male' | 'female')} />
       <label>{t('note')}</label>
       <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
-      {existing && <button className="btn red" onClick={del}>{t('delete')}</button>}
+      {existing && <button className="btn red" onClick={del} disabled={deleting}>{deleting ? '删除中…' : t('delete')}</button>}
       <button className="btn" style={{ marginTop: 14 }} onClick={save}>{t('save')}</button>
       <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>
     </Overlay>
