@@ -19,7 +19,7 @@ const SUPABASE_ORIGIN = 'https://kltqzleqiqykvpilcckr.supabase.co';
 export const DEFAULT_SUPABASE_URL = ENV_URL || SUPABASE_ORIGIN;
 export const DEFAULT_SUPABASE_ANON_KEY =
   ENV_KEY ||
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtsdHF6aWVxaXF5a3ZwbGljY2tyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyNzY3OTEsImV4cCI6MjEwMjg1Mjc5MX0.vV1Ped4vGT5fPZ1WKB1O5FUtIK1bdPZdAEyGGhcAMy8';
+  'sb_publishable_VL9vkmCSna-o1bqksfUvOg_lLzIbhDW';
 
 /**
  * 智能解析实际请求的 API 基地址：
