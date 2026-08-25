@@ -8,7 +8,6 @@ import {
   loginEmail,
   loginPhone,
   signupEmail,
-  signInWechat,
   sendEmailOtp,
   verifyEmailOtp,
   updatePassword,
@@ -304,15 +303,6 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
     setTimeout(() => switchMode('login'), 1000);
   }
 
-  function wechatLogin() {
-    if (isDevHost()) {
-      onLogin();
-      return;
-    }
-    const r = signInWechat();
-    if (r.error) showError(r.error);
-  }
-
   // 未配置 Supabase：先引导配置
   if (!configured) {
     return (
@@ -401,9 +391,6 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
               </div>
             </div>
 
-            <button className="btn wx-btn" onClick={wechatLogin}>
-              <span className="wx-ic">💬</span> 微信授权登录
-            </button>
             <p className="login-tip center">首次使用请先注册创建账号，之后可绑定手机号用手机号登录。</p>
           </div>
         </div>
