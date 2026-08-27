@@ -380,11 +380,10 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
             </button>
 
             <div className="login-links">
-              <div className="login-forgot">
+              <div className="login-forgot" style={{ marginLeft: 'auto' }}>
                 <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
                   忘记密码
                 </button>
-                <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
               </div>
             </div>
           </div>
