@@ -380,9 +380,6 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
             </button>
 
             <div className="login-links">
-              <button type="button" className="login-link" onClick={() => switchMode('register')}>
-                注册
-              </button>
               <div className="login-forgot">
                 <button type="button" className="login-link" onClick={() => switchMode('forgot')}>
                   忘记密码
@@ -390,8 +387,6 @@ export function LoginView({ onLogin }: { onLogin: (session?: SaSession) => void 
                 <span className="login-link-hint">使用邮箱验证来设置新的密码</span>
               </div>
             </div>
-
-            <p className="login-tip center">首次使用请先注册创建账号，之后可绑定手机号用手机号登录。</p>
           </div>
         </div>
       </div>

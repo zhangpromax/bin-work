@@ -15,6 +15,7 @@ export interface CloudConfig {
 let cfg: CloudConfig = { url: '', key: '' };
 let enabled = false;
 let localOnly = false;
+let authToken: string | null = null; // 登录后注入的用户 JWT，用于过 RLS；为空则回退 anon key
 const LS_LOCAL_ONLY = 'babycare_cloud_local';
 
 function normalizeCloudUrl(url: string): string {
@@ -112,10 +113,21 @@ export function cloudKey(): string {
   return cfg.key;
 }
 
+/** 登录成功后注入用户 JWT，使云端请求以 authenticated 身份过 RLS（挡外人） */
+export function setAuthToken(t: string | null): void {
+  authToken = t;
+}
+
+/** 取当前鉴权令牌（auth.ts / store 之外的场景用，如清空云端数据） */
+export function getAuthToken(): string | null {
+  return authToken;
+}
+
 function headers(): Record<string, string> {
+  const token = authToken || cfg.key;
   return {
     apikey: cfg.key,
-    Authorization: `Bearer ${cfg.key}`,
+    Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
     Prefer: 'resolution=merge-duplicates,return=representation',
   };
@@ -162,7 +174,7 @@ export async function cloudPush(db: DB): Promise<void> {
 /** 删除云端某个宝宝及其全部关联数据；本地已删，push 不会自动删云端，必须显式调 DELETE */
 export async function cloudDeleteBaby(babyId: string): Promise<void> {
   if (!enabled) return;
-  const h = { apikey: cfg.key, Authorization: `Bearer ${cfg.key}` };
+  const h = { apikey: cfg.key, Authorization: `Bearer ${authToken || cfg.key}` };
   const tables = ['feedings', 'diapers', 'sleeps', 'temps', 'medicines', 'medicals', 'weights', 'consumptions', 'babies'];
   for (const tb of tables) {
     try {

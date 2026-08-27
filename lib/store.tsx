@@ -10,6 +10,7 @@ import {
 import {
   cloudInit, cloudPull, cloudPush, cloudDeleteBaby, cloudEnabled, cloudSave,
   cloudUrl, cloudKey, cloudTest, setLocalOnly, isLocalOnly, cloudUserOverridden,
+  setAuthToken, getAuthToken,
 } from './cloud';
 import { DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, hasDefaultCloud } from './config';
 import { getLang, setLang as i18nSetLang, Lang, toggleLang as i18nToggle } from './i18n';
@@ -122,29 +123,17 @@ function getStoredTheme(): Theme {
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [db, setDb] = useState<DB>(EMPTY_DB);
-  const [lang, setLangState] = useState<Lang>(getLang());
-  const [cloudOn, setCloudOn] = useState<boolean>(() => {
-    if (typeof window !== 'undefined') {
-      cloudInit();
-      return cloudEnabled();
-    }
-    return false;
-  });
-  const [theme, setThemeState] = useState<Theme>(getStoredTheme);
+  // 以下 UI/登录态初始一律用常量默认值；真实值延迟到 useEffect（客户端挂载后）读取，
+  // 避免 SSR（无 localStorage）与客户端首帧不一致 → hydration mismatch → 整根失活（表现为「点不动」）。
+  const [lang, setLangState] = useState<Lang>('zh');
+  const [cloudOn, setCloudOn] = useState<boolean>(false);
+  const [theme, setThemeState] = useState<Theme>('static');
   const [toastMsg, setToastMsg] = useState<{ msg: string; id: number } | null>(null);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dbRef = useRef<DB>(db);
   dbRef.current = db;
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(() => !!getSession());
-  const [currentUser, setCurrentUser] = useState<{ phone?: string; email?: string; name?: string; avatar?: string } | null>(() => {
-    const s = getSession();
-    return s ? {
-      phone: s.user?.phone,
-      email: s.user?.email,
-      name: s.user?.user_metadata?.display_name as string | undefined,
-      avatar: s.user?.user_metadata?.avatar_url as string | undefined,
-    } : null;
-  });
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<{ phone?: string; email?: string; name?: string; avatar?: string } | null>(null);
 
 const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 const toast = (msg: string) => {
@@ -170,8 +159,23 @@ const saveProfile = (patch: Partial<Profile>) => {
     }, 400);
   };
 
-  // 启动：业务数据完全来自云端，本地不再缓存 babycare_db（清除旧缓存避免回源）
+  // 启动：客户端挂载后恢复真实 UI/登录态，再拉取云端业务数据
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    // 恢复云端配置与登录态（这些值在 SSR 时不可得，必须等客户端挂载后设置，避免 hydration mismatch）
+    cloudInit();
+    setCloudOn(cloudEnabled());
+    setLangState(getLang());
+    setThemeState(getStoredTheme());
+    const sess = getSession();
+    setIsLoggedIn(!!sess);
+    setCurrentUser(sess ? {
+      phone: sess.user?.phone,
+      email: sess.user?.email,
+      name: sess.user?.user_metadata?.display_name as string | undefined,
+      avatar: sess.user?.user_metadata?.avatar_url as string | undefined,
+    } : null);
+    // 业务数据完全来自云端，本地不再缓存 babycare_db（清除旧缓存避免回源）
     try { localStorage.removeItem('babycare_db'); } catch { /* ignore */ }
     if (cloudEnabled()) {
       cloudPull(EMPTY_DB).then((merged) => setDb(merged));
@@ -371,7 +375,7 @@ const saveProfile = (patch: Partial<Profile>) => {
       TABLES.forEach((tb) => {
         fetch(`${cloudUrl()}/rest/v1/${tb}?id=neq.00000000-0000-0000-0000-000000000000`, {
           method: 'DELETE',
-          headers: { apikey: cloudKey(), Authorization: `Bearer ${cloudKey()}` },
+          headers: { apikey: cloudKey(), Authorization: `Bearer ${getAuthToken() || cloudKey()}` },
         }).catch(() => undefined);
       });
       setTimeout(() => {
@@ -426,6 +430,8 @@ const saveProfile = (patch: Partial<Profile>) => {
     if (session) setSession(session);
     else mockLogin();
     const s = getSession();
+    // 注入登录 JWT（dev mock 的 local-mock 视为未登录，回退 anon）
+    setAuthToken(s?.access_token && s.access_token !== 'local-mock' ? s.access_token : null);
     setIsLoggedIn(true);
     setCurrentUser(s ? {
       phone: s.user?.phone,
@@ -437,6 +443,7 @@ const saveProfile = (patch: Partial<Profile>) => {
 
   const loginWithSession = () => {
     const s = getSession();
+    setAuthToken(s?.access_token && s.access_token !== 'local-mock' ? s.access_token : null);
     setIsLoggedIn(true);
     setCurrentUser(s ? {
       phone: s.user?.phone,
@@ -462,6 +469,7 @@ const saveProfile = (patch: Partial<Profile>) => {
 
   const logout = () => {
     signOut();
+    setAuthToken(null);
     setIsLoggedIn(false);
     setCurrentUser(null);
     toast('已退出登录');
