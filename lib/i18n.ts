@@ -3,7 +3,7 @@ export type Lang = 'zh' | 'en';
 const I18N: Record<Lang, Record<string, string>> = {
   zh: {
     title: '家有宝宝', sub: '宝宝成长记录台',
-    tabhome: '首页', tabprofile: '档案', tabhealth: '数据', tabmine: '我的', quick: '记录',
+    tabhome: '首页', tabprofile: '成长', tabhealth: '数据', tabmine: '我的', quick: '记录',
     todaytodo: '今日待办', recent: '最近动态', today: '今日', todayoverview: '今日概览', alldata: '全部数据', back: '返回', babies: '宝宝', addbaby: '添加宝宝',
     feed: '喂奶', diaper: '换尿布', sleep: '睡眠', temp: '体温', med: '喂药', mrec: '医疗', weight: '体重', cost: '消费',
     feedlog: '喂奶记录', diapers: '换尿布', sleeplog: '睡眠记录', temphd: '体温记录',
@@ -46,10 +46,13 @@ const I18N: Record<Lang, Record<string, string>> = {
     weekDay4: '周四', weekDay5: '周五', weekDay6: '周六',
     tapSwitchHint: '点击右侧开关启停提醒', reminderEmpty: '还没有提醒，点击添加',
     enabled: '启用',
+    growthGuide: '0-6岁成长里程碑', growthGuideSub: '按宝宝生日自动生成 · 权威指南提醒',
+    currentStage: '当前阶段', msReached: '已到', msUpcoming: '未到',
+    msMarkDone: '完成', msUndo: '撤销', msSource: '来源', msAllDone: '该阶段前的里程碑都已完成 🎉',
   },
   en: {
     title: 'Baby Care', sub: 'Baby Growth Tracker',
-    tabhome: 'Home', tabprofile: 'Profiles', tabhealth: 'Data', tabmine: 'Mine', quick: 'Log',
+    tabhome: 'Home', tabprofile: 'Growth', tabhealth: 'Data', tabmine: 'Mine', quick: 'Log',
     todaytodo: 'Today', recent: 'Recent', today: 'Today', todayoverview: 'Today Overview', alldata: 'All Data', back: 'Back', babies: 'Babies', addbaby: 'Add Baby',
     feed: 'Feed', diaper: 'Diaper', sleep: 'Sleep', temp: 'Temp', med: 'Med', mrec: 'Medical', weight: 'Weight', cost: 'Expense',
     feedlog: 'Feeding Log', diapers: 'Diapers', sleeplog: 'Sleep Log', temphd: 'Temp Log',
@@ -92,6 +95,9 @@ const I18N: Record<Lang, Record<string, string>> = {
     weekDay4: 'Thu', weekDay5: 'Fri', weekDay6: 'Sat',
     tapSwitchHint: 'Tap the switch on the right to toggle', reminderEmpty: 'No reminders yet, tap to add',
     enabled: 'Enabled',
+    growthGuide: '0-6 Yrs Growth Milestones', growthGuideSub: 'Auto from baby birthday · official guidelines',
+    currentStage: 'Current stage', msReached: 'Due', msUpcoming: 'Upcoming',
+    msMarkDone: 'Done', msUndo: 'Undo', msSource: 'Source', msAllDone: 'Milestones up to now are all done 🎉',
   },
 };
 

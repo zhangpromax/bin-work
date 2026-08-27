@@ -455,6 +455,19 @@ header.top.user-profile-entry .profile-arrow {
 .mile-date { font-size: 12px; color: #9aa0a6; flex: 0 0 auto; }
 .mile-note { font-size: 12px; color: #8a756a; margin-top: 3px; line-height: 1.4; }
 
+/* ===== 成长档案页（底部「成长」Tab） ===== */
+.growth-switch { display: flex; gap: 8px; overflow-x: auto; padding: 2px 4px 8px; }
+.gs-chip {
+  flex: 0 0 auto; border: 1px solid var(--line); background: #fff;
+  border-radius: 16px; padding: 6px 14px; font-size: 13px; color: #6b5a4f;
+}
+.gs-chip.on { background: var(--green); color: #fff; border-color: var(--green); }
+.growth-card { padding: 16px; }
+.growth-head { display: flex; align-items: center; gap: 14px; }
+.growth-info { flex: 1; min-width: 0; }
+.growth-info .bk-name { margin-bottom: 4px; }
+.growth-stats { display: flex; gap: 8px; margin-top: 12px; }
+
 /* ===== 宝宝档案编辑（灵动版） ===== */
 .avatar-pick {
   position: relative;
@@ -532,3 +545,29 @@ header.top.user-profile-entry .profile-arrow {
 .db-ic { font-size: 26px; line-height: 1; }
 .db-label { font-size: 13px; color: #5A3E2B; font-weight: 600; }
 .db-badge { position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }
+
+/* ===== 0-6岁成长里程碑时间轴（新增，成长页顶部） ===== */
+.gm-current { display: flex; align-items: center; gap: 10px; background: linear-gradient(135deg,#FFF6EC 0%, #FFEEDD 100%); border: 1px solid #F4E0C8; border-radius: 14px; padding: 12px 14px; margin: 0 4px 14px; }
+.gm-cur-label { flex: 0 0 auto; font-size: 12px; font-weight: 700; color: #B5712F; background: #fff; border-radius: 8px; padding: 4px 8px; }
+.gm-cur-text { font-size: 14px; font-weight: 600; color: #5A3E2B; line-height: 1.45; }
+.gm-timeline { position: relative; margin: 0 4px; }
+.gm-item { display: flex; gap: 12px; }
+.gm-rail { position: relative; flex: 0 0 14px; display: flex; justify-content: center; }
+.gm-rail::before { content: ''; position: absolute; top: 6px; bottom: -8px; left: 50%; width: 2px; transform: translateX(-50%); background: #EEE3D6; }
+.gm-item:last-child .gm-rail::before { display: none; }
+.gm-dot { width: 12px; height: 12px; border-radius: 50%; margin-top: 4px; box-shadow: 0 0 0 3px rgba(0,0,0,.04); flex: 0 0 auto; z-index: 1; }
+.gm-body { flex: 1; min-width: 0; background: #fff; border: 1px solid #F0E6DA; border-radius: 14px; padding: 12px 14px; margin-bottom: 12px; transition: box-shadow .18s ease, border-color .18s ease; }
+.gm-item.current .gm-body { border-color: var(--green); box-shadow: 0 6px 18px rgba(7,193,96,.14); }
+.gm-item.done .gm-body { opacity: .58; }
+.gm-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+.gm-cat { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.gm-month { font-size: 11px; color: #9aa0a6; }
+.gm-status { margin-left: auto; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 8px; }
+.gm-status.reached { background: #FFF0E0; color: #B5712F; }
+.gm-status.upcoming { background: #EAF3EE; color: #5BB98C; }
+.gm-status.done { background: #EAEAEA; color: #9aa0a6; }
+.gm-title { font-size: 14px; font-weight: 700; color: #1f1f1f; margin-bottom: 4px; }
+.gm-desc { font-size: 12px; color: #6b5a4f; line-height: 1.55; }
+.gm-src { font-size: 11px; color: #9aa0a6; margin-top: 6px; }
+.gm-foot { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.gm-date { font-size: 12px; color: #9aa0a6; }

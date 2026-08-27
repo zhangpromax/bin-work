@@ -156,6 +156,7 @@ export interface DB {
   reminders: Reminder[];
   consumptions: Consumption[];
   milestones: Milestone[];
+  milestoneDone: string[]; // 0-6岁成长里程碑模板中已被用户标记「完成」的项 id
 }
 
 export const TABLES = [
@@ -168,5 +169,5 @@ export type TableName = (typeof TABLES)[number];
 export const EMPTY_DB: DB = {
   profile: { ...EMPTY_PROFILE },
   babies: [], feedings: [], diapers: [], sleeps: [], temps: [],
-  medicines: [], medicals: [], weights: [], reminders: [], consumptions: [], milestones: [],
+  medicines: [], medicals: [], weights: [], reminders: [], consumptions: [], milestones: [], milestoneDone: [],
 };

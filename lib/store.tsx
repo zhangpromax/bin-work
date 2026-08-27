@@ -57,6 +57,7 @@ interface StoreCtx {
   // 通用增删改
   upsertRow: (table: TableName, row: Record<string, unknown>) => void;
   deleteRow: (table: TableName, id: string) => void;
+  toggleMilestoneDone: (id: string) => void;
   deleteBabyCascade: (babyId: string) => void;
   // 医疗-消费联动
   saveMedicalRow: (row: Partial<Medical> & { id?: string }) => void;
@@ -178,7 +179,13 @@ const saveProfile = (patch: Partial<Profile>) => {
     // 业务数据完全来自云端，本地不再缓存 babycare_db（清除旧缓存避免回源）
     try { localStorage.removeItem('babycare_db'); } catch { /* ignore */ }
     if (cloudEnabled()) {
-      cloudPull(EMPTY_DB).then((merged) => setDb(merged));
+      cloudPull(EMPTY_DB).then((merged) => {
+        try { const m = JSON.parse(localStorage.getItem('babycare_msdone') || '[]'); if (Array.isArray(m)) (merged as DB).milestoneDone = m; } catch { /* ignore */ }
+        setDb(merged);
+      });
+    } else {
+      // 本地模式：从 localStorage 恢复「完成」标记
+      try { const m = JSON.parse(localStorage.getItem('babycare_msdone') || '[]'); if (Array.isArray(m)) setDb((p) => ({ ...p, milestoneDone: m })); } catch { /* ignore */ }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -200,6 +207,18 @@ const saveProfile = (patch: Partial<Profile>) => {
     setDb((prev) => {
       const arr = prev[table] as unknown as any[];
       const nextDb = { ...prev, [table]: arr.filter((x) => x.id !== id) } as unknown as DB;
+      schedulePush(nextDb);
+      return nextDb;
+    });
+  };
+
+  const toggleMilestoneDone = (id: string) => {
+    setDb((prev) => {
+      const has = prev.milestoneDone.includes(id);
+      const nextDone = has ? prev.milestoneDone.filter((x) => x !== id) : [...prev.milestoneDone, id];
+      // 单独落地 localStorage，因其不在云端同步表内（属 UI 偏好，单机保留即可）
+      try { if (typeof window !== 'undefined') localStorage.setItem('babycare_msdone', JSON.stringify(nextDone)); } catch { /* ignore */ }
+      const nextDb = { ...prev, milestoneDone: nextDone } as DB;
       schedulePush(nextDb);
       return nextDb;
     });
@@ -417,7 +436,7 @@ const saveProfile = (patch: Partial<Profile>) => {
         { id: uid(), babyId: bid, title: ZH ? '测体温' : 'Measure temp', subTitle: ZH ? '每天 20:00' : 'Daily 20:00', icon: '🌡', cycle: JSON.stringify({ type: 'daily', time: '20:00' }), enabled: true, createdAt: ts, updatedAt: ts },
         { id: uid(), babyId: bid, title: ZH ? '疫苗预约' : 'Vaccine', subTitle: ZH ? '3周后' : 'In 3 weeks', icon: '💉', cycle: JSON.stringify({ type: 'once', days: 21 }), enabled: false, createdAt: ts, updatedAt: ts },
       ];
-      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, reminders, consumptions, milestones: [] };
+      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, reminders, consumptions, milestones: [], milestoneDone: prev.milestoneDone || [] };
       // ⚠️ 演示数据【仅写入本地内存】，刻意不调用 schedulePush，避免污染云端/正式环境
       return nextDb;
     });
@@ -540,7 +559,7 @@ const saveProfile = (patch: Partial<Profile>) => {
     saveProfile, updateProfile,
     isLoggedIn, currentUser, login, loginWithSession, logout,
     mineSub, setMineSub,
-    upsertRow, deleteRow, deleteBabyCascade, saveMedicalRow, deleteMedicalRow, doseMed,
+    upsertRow, deleteRow, toggleMilestoneDone, deleteBabyCascade, saveMedicalRow, deleteMedicalRow, doseMed,
     saveCloudCfg, syncNow, testConn, closeCloud, setLocalMode, usingDefaultCloud,
     loadSamples, clearData, exportData, importData,
   };
