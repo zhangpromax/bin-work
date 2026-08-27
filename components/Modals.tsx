@@ -98,8 +98,9 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
   const [cost, setCost] = useState('');
   const [weight, setWeight] = useState('');
   const [note, setNote] = useState('');
+  const [mileType, setMileType] = useState('smile');
 
-  const title = ({ feeding: t('feed'), diaper: t('diaper'), sleep: t('sleep'), temp: t('temp'), med: t('med'), mrec: t('mrec'), weight: t('weight'), cost: t('cost') } as Record<FormType, string>)[form];
+  const title = ({ feeding: t('feed'), diaper: t('diaper'), sleep: t('sleep'), temp: t('temp'), med: t('med'), mrec: t('mrec'), weight: t('weight'), cost: t('cost'), milestone: t('milestone') } as Record<FormType, string>)[form];
 
   const submit = () => {
     if (!babyId) { toast('请选择宝宝'); return; }
@@ -125,6 +126,8 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
       upsertRow('weights', { id: uid(), babyId, date, weight });
     } else if (form === 'cost') {
       upsertRow('consumptions', { id: uid(), babyId, category: cat, amount, date, note });
+    } else if (form === 'milestone') {
+      upsertRow('milestones', { id: uid(), babyId, date, type: mileType, note });
     }
     toast('已保存');
     onClose();
@@ -193,6 +196,13 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
         <input type="number" inputMode="decimal" placeholder="0" value={amount} onChange={(e) => setAmount(e.target.value)} />
       </>}
 
+      {form === 'milestone' && <>
+        <label>{t('milelabel')}</label>
+        <select value={mileType} onChange={(e) => setMileType(e.target.value)}>
+          {['smile', 'rollover', 'sit', 'teeth', 'crawl', 'stand', 'walk', 'talk', 'callparents', 'recognize', 'other'].map((v) => <option key={v} value={v}>{typeName('mile', v)}</option>)}
+        </select>
+      </>}
+
       {form !== 'med' && form !== 'weight' && <>
         <label>{t('recorddate')}</label>
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
@@ -206,7 +216,7 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
         <input type="date" value={date} onChange={(e) => setDate(e.target.value)} />
       </>}
 
-      {(form === 'feeding' || form === 'diaper' || form === 'sleep' || form === 'temp' || form === 'med' || form === 'mrec' || form === 'cost') && (
+      {(form === 'feeding' || form === 'diaper' || form === 'sleep' || form === 'temp' || form === 'med' || form === 'mrec' || form === 'cost' || form === 'milestone') && (
         <>
           <label>{t('note')}</label>
           <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
@@ -245,9 +255,13 @@ export function BabyModal({ id, onClose }: { id?: string; onClose: () => void })
   const existing: Baby | undefined = id ? db.babies.find((b) => b.id === id) : undefined;
   const [name, setName] = useState(existing?.name || '');
   const [birthday, setBirthday] = useState(existing?.birthday || '');
-  const [gender, setGender] = useState(existing?.gender || 'male');
+  const [gender, setGender] = useState<'male' | 'female'>(existing?.gender || 'male');
+  const [height, setHeight] = useState(existing?.height || '');
+  const [weight, setWeight] = useState(existing?.weight || '');
+  const [bloodType, setBloodType] = useState(existing?.bloodType || '');
   const [note, setNote] = useState(existing?.note || '');
   const [avatar, setAvatar] = useState(existing?.avatar || '');
+  const fileRef = useRef<HTMLInputElement | null>(null);
   const [deleting, setDeleting] = useState(false);
 
   const onFile = (f: File) => {
@@ -256,7 +270,7 @@ export function BabyModal({ id, onClose }: { id?: string; onClose: () => void })
 
   const save = () => {
     if (!name.trim()) { toast('请填写昵称'); return; }
-    const base = { name: name.trim(), birthday, gender, note, avatar };
+    const base = { name: name.trim(), birthday, gender, height, weight, bloodType, note, avatar };
     if (existing) {
       upsertRow('babies', { ...base, id: existing.id });
     } else {
@@ -278,24 +292,68 @@ export function BabyModal({ id, onClose }: { id?: string; onClose: () => void })
     }
   };
 
+  const btOptions = [
+    { v: '', label: '—' },
+    { v: 'A', label: 'A' },
+    { v: 'B', label: 'B' },
+    { v: 'AB', label: 'AB' },
+    { v: 'O', label: 'O' },
+  ];
+
   return (
     <Overlay onClose={onClose}>
       <CloseBtn onClose={onClose} />
-      <h3>{existing ? t('edit') : t('addbaby')}</h3>
-      <center>
-        {avatar ? <img className="avatar" style={{ width: 84, height: 84 }} src={avatar} alt="" /> : <div className="avatar" style={{ width: 84, height: 84 }} />}
-        <br />
-        <label style={{ marginTop: 8 }}>{t('avatar')}</label>
-        <input type="file" accept="image/*" onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); }} />
-      </center>
+      <h3>{existing ? t('edit') + t('babyProfile') : t('addbaby')}</h3>
+
+      <div className="avatar-pick" onClick={() => fileRef.current?.click()} title={lang === 'en' ? 'Tap to change photo' : '点击更换头像'}>
+        {avatar ? (
+          <img className="avatar" src={avatar} alt="" />
+        ) : (
+          <div className="avatar avatar-empty">👶</div>
+        )}
+        <span className="avatar-cam">📷</span>
+      </div>
+      <input
+        ref={fileRef}
+        type="file"
+        accept="image/*"
+        style={{ display: 'none' }}
+        onChange={(e) => { const f = e.target.files?.[0]; if (f) onFile(f); e.target.value = ''; }}
+      />
+      <div className="avatar-hint">{lang === 'en' ? 'Tap avatar to change photo' : '点击头像更换照片'}</div>
+
       <label>{t('name')}</label>
-      <input value={name} onChange={(e) => setName(e.target.value)} />
-      <label>{t('birthday')}</label>
-      <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+      <input value={name} onChange={(e) => setName(e.target.value)} placeholder={t('name')} />
+
       <label>{t('gender')}</label>
       <Seg options={[{ v: 'male', label: t('male') }, { v: 'female', label: t('female') }]} value={gender} onChange={(v) => setGender(v as 'male' | 'female')} />
+
+      <label>{t('birthday')}</label>
+      <input type="date" value={birthday} onChange={(e) => setBirthday(e.target.value)} />
+
+      <div className="two-col">
+        <div>
+          <label>{t('height')}</label>
+          <div className="unit-in">
+            <input type="number" inputMode="decimal" value={height} onChange={(e) => setHeight(e.target.value)} placeholder="60" />
+            <span className="u">cm</span>
+          </div>
+        </div>
+        <div>
+          <label>{t('weight')}</label>
+          <div className="unit-in">
+            <input type="number" inputMode="decimal" value={weight} onChange={(e) => setWeight(e.target.value)} placeholder="7.5" />
+            <span className="u">kg</span>
+          </div>
+        </div>
+      </div>
+
+      <label>{t('bloodType')}</label>
+      <Seg options={btOptions} value={bloodType} onChange={setBloodType} />
+
       <label>{t('note')}</label>
       <textarea rows={2} value={note} onChange={(e) => setNote(e.target.value)} />
+
       {existing && <button className="btn red" onClick={del} disabled={deleting}>{deleting ? '删除中…' : t('delete')}</button>}
       <button className="btn" style={{ marginTop: 14 }} onClick={save}>{t('save')}</button>
       <button className="btn ghost" onClick={onClose}>{t('cancel')}</button>

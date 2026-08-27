@@ -166,3 +166,18 @@ create table if not exists "operation_logs" (
 );
 create index if not exists idx_operation_logs_user ON "operation_logs" ("userId", "createdAt" desc);
 alter table "operation_logs" disable row level security;
+
+-- 成长里程碑
+create table if not exists "milestones" (
+  "id" text primary key,
+  "babyId" text not null default '',
+  "date" text not null default '',
+  "type" text not null default '',
+  "note" text not null default '',
+  "createdAt" bigint not null default 0,
+  "updatedAt" bigint not null default 0
+);
+create index if not exists idx_milestones_baby ON "milestones" ("babyId", "date");
+-- 开启行级安全（与现有 9 表一致，已登录用户可读写）
+alter table "milestones" enable row level security;
+create policy "milestones_auth" on "milestones" for all to authenticated using (true) with check (true);

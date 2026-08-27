@@ -269,7 +269,8 @@ export function MineView() {
           <button className="btn ghost" style={{ marginBottom: 10 }} onClick={() => dataFileRef.current?.click()}>{t('tabmine') === 'Mine' ? 'Import' : '导入备份'}</button>
           <input ref={dataFileRef} type="file" accept="application/json" style={{ display: 'none' }}
             onChange={(e) => { const f = e.target.files?.[0]; if (f) { importData(f); e.target.value = ''; } }} />
-          <button className="btn ghost" style={{ marginBottom: 10 }} onClick={loadSamples}>✨ {t('samples')}</button>
+          <button className="btn ghost" style={{ marginBottom: 6 }} onClick={loadSamples}>✨ {t('samples')}</button>
+          <div className="mini" style={{ color: '#2E9B5B', marginBottom: 10 }}>{t('tabmine') === 'Mine' ? 'Demo data is local only — never synced to cloud/production.' : '示例数据仅本地，不会同步到云端 / 正式环境。'}</div>
           <button className="btn red" onClick={clearData}>🗑 {t('clearData')}</button>
         </div>
       </main>

@@ -31,9 +31,10 @@ const FOOD: Record<string, string> = { milk: 'milk', formula: 'formula', solid: 
 const MTYPE: Record<string, string> = { vaccine: 'vaccine', checkup: 'checkup', visit: 'visit', other: 'other' };
 const CAT: Record<string, string> = { catfood: 'catfood', catmedical: 'catmedical', cattoy: 'cattoy', catcloth: 'catcloth', catother: 'catother' };
 const DTYPE: Record<string, string> = { wet: 'wet', dirty: 'dirty', both: 'both' };
+const MILE: Record<string, string> = { smile: 'smile', rollover: 'rollover', sit: 'sit', teeth: 'teeth', crawl: 'crawl', stand: 'stand', walk: 'walk', talk: 'talk', callparents: 'callparents', recognize: 'recognize', other: 'other' };
 
-export function typeName(cat: 'food' | 'mtype' | 'cat' | 'dtype', v: string): string {
-  const key = cat === 'food' ? FOOD[v] : cat === 'mtype' ? MTYPE[v] : cat === 'cat' ? CAT[v] : DTYPE[v];
+export function typeName(cat: 'food' | 'mtype' | 'cat' | 'dtype' | 'mile', v: string): string {
+  const key = cat === 'food' ? FOOD[v] : cat === 'mtype' ? MTYPE[v] : cat === 'cat' ? CAT[v] : cat === 'mile' ? MILE[v] : DTYPE[v];
   return key ? t(key) : v;
 }
 

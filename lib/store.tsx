@@ -213,7 +213,7 @@ const saveProfile = (patch: Partial<Profile>) => {
     }
     setDb((prev) => {
       const nextDb = { ...prev, babies: prev.babies.filter((b) => b.id !== babyId) } as DB;
-      ['feedings', 'diapers', 'sleeps', 'temps', 'medicines', 'medicals', 'weights', 'consumptions'].forEach((tb) => {
+      ['feedings', 'diapers', 'sleeps', 'temps', 'medicines', 'medicals', 'weights', 'consumptions', 'milestones'].forEach((tb) => {
         (nextDb as any)[tb] = ((prev as any)[tb]).filter((x: any) => x.babyId !== babyId);
       });
       dbRef.current = nextDb;
@@ -333,38 +333,95 @@ const saveProfile = (patch: Partial<Profile>) => {
   const usingDefaultCloud = !cloudUserOverridden() && hasDefaultCloud();
 
   const loadSamples = () => {
+    const ZH = lang === 'zh';
+    const demoName = ZH ? '小星星' : 'Little Star';
     setDb((prev) => {
-      if (prev.babies.length && !confirm('将追加示例数据？')) return prev;
+      // 防重复：已存在演示宝宝则跳过，避免多次点击叠加
+      if (prev.babies.some((b) => b.name === demoName)) {
+        return prev;
+      }
       const ts = Date.now();
       const bid = uid();
-      const babies: Baby[] = [...prev.babies, { id: bid, name: lang === 'en' ? 'Little Star' : '小星星', birthday: '2024-02-10', gender: 'female', avatar: '', note: '', createdAt: ts, updatedAt: ts }];
+      const babies: Baby[] = [...prev.babies, {
+        id: bid, name: demoName, birthday: '2024-02-10', gender: 'female',
+        height: '60', weight: '7.5', bloodType: 'A',
+        avatar: '', note: ZH ? '爱笑的小公主 👧' : 'A smiling little princess', createdAt: ts, updatedAt: ts,
+      }];
+      // 喂奶：过去 14 天，每天 4~5 次，奶量/类型有波动
       const feedings: Feeding[] = [...prev.feedings];
+      const feedTimes = ['07:30', '11:00', '14:30', '18:00', '21:30'];
+      for (let d = 14; d >= 0; d--) {
+        const day = new Date(); day.setDate(day.getDate() - d);
+        const n = d % 2 === 0 ? 5 : 4;
+        for (let k = 0; k < n; k++) {
+          feedings.push({
+            id: uid(), babyId: bid, date: ymd(day), time: feedTimes[k],
+            amount: String(110 + ((d + k) % 4) * 15), type: ['milk', 'formula', 'solid'][(d + k) % 3],
+            note: '', createdAt: ts, updatedAt: ts,
+          });
+        }
+      }
+      // 换尿布：过去 14 天，每天 2~4 次
       const diapers: Diaper[] = [...prev.diapers];
-      for (let i = 13; i >= 0; i--) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        feedings.push({ id: uid(), babyId: bid, date: ymd(d), time: '09:00', amount: String(120 + (i % 3) * 20), type: ['milk', 'formula', 'solid'][i % 3], note: '', createdAt: ts, updatedAt: ts });
+      const diaperTimes = ['08:00', '12:30', '16:00', '20:30', '23:00'];
+      for (let d = 14; d >= 0; d--) {
+        const day = new Date(); day.setDate(day.getDate() - d);
+        const n = 2 + (d % 3);
+        for (let k = 0; k < n; k++) {
+          diapers.push({
+            id: uid(), babyId: bid, date: ymd(day), time: diaperTimes[k],
+            type: ['wet', 'dirty', 'both'][(d + k) % 3], note: '', createdAt: ts, updatedAt: ts,
+          });
+        }
       }
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        diapers.push({ id: uid(), babyId: bid, date: ymd(d), time: '10:30', type: ['wet', 'dirty', 'both'][i % 3], note: '', createdAt: ts, updatedAt: ts });
+      // 睡眠：过去 7 天，每天 夜睡 + 午睡
+      const sleeps: Sleep[] = [...prev.sleeps];
+      for (let d = 7; d >= 0; d--) {
+        const day = new Date(); day.setDate(day.getDate() - d);
+        sleeps.push({ id: uid(), babyId: bid, date: ymd(day), start: '21:30', end_time: '06:30', duration: 540, note: ZH ? '夜间睡眠' : 'Night sleep', createdAt: ts, updatedAt: ts });
+        sleeps.push({ id: uid(), babyId: bid, date: ymd(day), start: '13:30', end_time: '15:00', duration: 90, note: ZH ? '午睡' : 'Nap', createdAt: ts, updatedAt: ts });
       }
-      const sd = new Date(); sd.setDate(sd.getDate() - 1);
-      const sleeps: Sleep[] = [...prev.sleeps,
-        { id: uid(), babyId: bid, date: ymd(sd), start: '22:00', end_time: '02:00', duration: 240, note: '', createdAt: ts, updatedAt: ts },
-        { id: uid(), babyId: bid, date: ymd(sd), start: '14:30', end_time: '16:30', duration: 120, note: lang === 'en' ? 'nap' : '午睡', createdAt: ts, updatedAt: ts },
-      ];
-      const temps: Temp[] = [...prev.temps, { id: uid(), babyId: bid, date: ymd(), time: '08:00', value: '36.6', note: '', createdAt: ts, updatedAt: ts }];
+      // 体温：过去 7 天，每天 1 次（轻微波动，便于看曲线）
+      const temps: Temp[] = [...prev.temps];
+      for (let d = 7; d >= 0; d--) {
+        const day = new Date(); day.setDate(day.getDate() - d);
+        temps.push({ id: uid(), babyId: bid, date: ymd(day), time: '08:00', value: (36.5 + ((d % 3) * 0.3)).toFixed(1), note: '', createdAt: ts, updatedAt: ts });
+      }
+      // 体重：过去 4 周，每周 1 次（稳定增长）
+      const weights: Weight[] = [...prev.weights];
+      for (let w = 4; w >= 0; w--) {
+        const day = new Date(); day.setDate(day.getDate() - w * 7);
+        weights.push({ id: uid(), babyId: bid, date: ymd(day), weight: (6.8 + (4 - w) * 0.18).toFixed(1), createdAt: ts, updatedAt: ts });
+      }
+      // 用药：维 D 每日 1 次
       const today = ymd();
-      const medicines: Medicine[] = [...prev.medicines, { id: uid(), babyId: bid, name: lang === 'en' ? 'Vit D' : '维D', startDate: today, totalDays: 7, freq: 1, doses: { [today]: 1 }, note: '', createdAt: ts, updatedAt: ts }];
-      const nd = new Date(); nd.setDate(nd.getDate() + 14);
-      const medicals: Medical[] = [...prev.medicals, { id: uid(), babyId: bid, type: 'vaccine', date: today, nextDate: ymd(nd), cost: '0', note: '', syncedId: null, createdAt: ts, updatedAt: ts }];
-      const weights: Weight[] = [...prev.weights, { id: uid(), babyId: bid, date: today, weight: '7.2', createdAt: ts, updatedAt: ts }];
-      const reminders: Reminder[] = [...prev.reminders];
-      const consumptions: Consumption[] = [...prev.consumptions, { id: uid(), babyId: bid, category: 'catfood', amount: '358', date: today, note: lang === 'en' ? 'Formula' : '奶粉', source: 'manual', createdAt: ts, updatedAt: ts }];
-      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, reminders, consumptions };
-      schedulePush(nextDb);
+      const medicines: Medicine[] = [...prev.medicines, {
+        id: uid(), babyId: bid, name: ZH ? '维生素D' : 'Vit D', startDate: today, totalDays: 30, freq: 1,
+        doses: { [today]: 1 }, note: ZH ? '促进钙吸收' : 'Calcium absorption', createdAt: ts, updatedAt: ts,
+      }];
+      // 医疗：疫苗（已接种 + 下次预约）
+      const nd = new Date(); nd.setDate(nd.getDate() + 21);
+      const medicals: Medical[] = [...prev.medicals, {
+        id: uid(), babyId: bid, type: 'vaccine', date: today, nextDate: ymd(nd), cost: '0',
+        note: ZH ? '乙肝疫苗第2针' : 'HBV vaccine 2nd dose', syncedId: null, createdAt: ts, updatedAt: ts,
+      }];
+      // 消费
+      const consumptions: Consumption[] = [...prev.consumptions,
+        { id: uid(), babyId: bid, category: 'catfood', amount: '358', date: today, note: ZH ? '奶粉1罐' : 'Formula', source: 'manual', createdAt: ts, updatedAt: ts },
+        { id: uid(), babyId: bid, category: 'catdiaper', amount: '129', date: ymd(new Date(Date.now() - 3 * 86400000)), note: ZH ? '纸尿裤' : 'Diapers', source: 'manual', createdAt: ts, updatedAt: ts },
+        { id: uid(), babyId: bid, category: 'cattoy', amount: '89', date: ymd(new Date(Date.now() - 6 * 86400000)), note: ZH ? '摇铃玩具' : 'Toy', source: 'manual', createdAt: ts, updatedAt: ts },
+      ];
+      // 提醒
+      const reminders: Reminder[] = [...prev.reminders,
+        { id: uid(), babyId: bid, title: ZH ? '喂奶提醒' : 'Feeding', subTitle: ZH ? '每4小时' : 'Every 4h', icon: '🍼', cycle: JSON.stringify({ type: 'hourly', hours: 4 }), enabled: true, createdAt: ts, updatedAt: ts },
+        { id: uid(), babyId: bid, title: ZH ? '测体温' : 'Measure temp', subTitle: ZH ? '每天 20:00' : 'Daily 20:00', icon: '🌡', cycle: JSON.stringify({ type: 'daily', time: '20:00' }), enabled: true, createdAt: ts, updatedAt: ts },
+        { id: uid(), babyId: bid, title: ZH ? '疫苗预约' : 'Vaccine', subTitle: ZH ? '3周后' : 'In 3 weeks', icon: '💉', cycle: JSON.stringify({ type: 'once', days: 21 }), enabled: false, createdAt: ts, updatedAt: ts },
+      ];
+      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, reminders, consumptions, milestones: [] };
+      // ⚠️ 演示数据【仅写入本地内存】，刻意不调用 schedulePush，避免污染云端/正式环境
       return nextDb;
     });
+    toast(ZH ? '已载入演示数据（仅本地，不会同步到云端）' : 'Demo data loaded (local only, not synced)');
   };
 
   const clearData = () => {

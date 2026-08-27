@@ -360,3 +360,175 @@ header.top.user-profile-entry .profile-arrow {
 .modal-box { background: #fff; border-radius: 16px; padding: 18px; width: 100%; max-height: 88vh; overflow-y: auto; }
 .modal-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 14px; text-align: center; }
 .modal-actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; }
+
+/* ===== 首页顶部打招呼 ===== */
+.home-greet {
+  background: transparent;
+  color: var(--text);
+  padding: 18px 16px 8px;
+  margin: 4px 0 0;
+}
+.greet-hi { font-size: 23px; font-weight: 600; letter-spacing: .5px; color: #1f1f1f; line-height: 1.3; }
+.greet-sub { font-size: 13px; color: #9aa0a6; margin-top: 7px; letter-spacing: .5px; }
+.greet-copy { font-size: 13px; color: var(--green); margin-top: 11px; font-weight: 500; letter-spacing: .3px; opacity: .92; }
+
+/* ===== 首页宝宝信息卡 ===== */
+.baby-card { padding: 16px; }
+.baby-row { align-items: stretch; padding: 6px 0; border-bottom: 1px solid var(--line); }
+.baby-row:last-child { border-bottom: none; }
+.babycard { display: flex; align-items: center; gap: 16px; flex: 1; min-width: 0; }
+.babyinfo { flex: 1; min-width: 0; }
+.bk-name { font-size: 18px; font-weight: 700; color: #1f1f1f; letter-spacing: .3px; }
+.bk-age { font-size: 13px; color: var(--green); font-weight: 600; margin-top: 2px; }
+.bk-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.bk-tag {
+  font-size: 11px; color: #8a756a; background: #F7F1EA;
+  padding: 3px 8px; border-radius: 10px; white-space: nowrap;
+}
+.bk-stats { display: flex; gap: 8px; margin-top: 10px; }
+.bk-stat {
+  background: #FDF8F3; border-radius: 12px; padding: 7px 10px;
+  display: flex; flex-direction: column; align-items: center; min-width: 54px;
+  border: 1px solid rgba(232, 155, 76, 0.10);
+}
+.bk-num { font-size: 15px; font-weight: 700; color: var(--green); line-height: 1.1; }
+.bk-unit { font-size: 10px; color: #9A877A; margin-top: 3px; }
+
+/* 动态宝宝头像 */
+.baby-avatar-wrap {
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #FFF7EF 0%, #FFEFE3 100%);
+  box-shadow: inset 0 0 0 1px rgba(255,255,255,0.8), 0 4px 12px rgba(180, 130, 75, 0.12);
+  display: flex; align-items: center; justify-content: center;
+}
+.baby-avatar { display: block; overflow: visible; }
+.baby-breathe {
+  transform-origin: 50px 92px;
+  animation: babyBreathe 3.2s ease-in-out infinite;
+}
+.baby-eyes { animation: babyBlink 4.2s infinite; transform-origin: center; }
+.baby-blink { opacity: 0; animation: babyBlinkShow 4.2s infinite; }
+.baby-shadow { animation: babyShadow 3.2s ease-in-out infinite; transform-origin: center; }
+
+@keyframes babyBreathe {
+  0%, 100% { transform: scale(1) translateY(0); }
+  50% { transform: scale(1.02) translateY(-1.5px); }
+}
+@keyframes babyBlink {
+  0%, 45%, 55%, 100% { opacity: 1; }
+  48%, 52% { opacity: 0; }
+}
+@keyframes babyBlinkShow {
+  0%, 45%, 55%, 100% { opacity: 0; }
+  48%, 52% { opacity: 1; }
+}
+@keyframes babyShadow {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.94); opacity: 0.85; }
+}
+.baby-avatar-wrap:hover .baby-breathe { animation-duration: 1.6s; }
+
+/* ===== 数据页（原健康页）三大板块 ===== */
+.block { margin: 16px 0; }
+.block-title {
+  font-size: 16px; font-weight: 700; color: #1f1f1f;
+  display: flex; align-items: center; gap: 8px;
+  margin: 4px 4px 10px; letter-spacing: .5px;
+}
+.block-title .ic { font-size: 18px; }
+
+/* ===== 成长里程碑时间线 ===== */
+.mile-list { display: flex; flex-direction: column; margin-top: 4px; }
+.mile-item {
+  display: flex; align-items: flex-start; gap: 10px;
+  padding: 10px 0; border-bottom: 1px solid #f0f0f0;
+}
+.mile-item:last-child { border-bottom: none; }
+.mile-dot {
+  width: 10px; height: 10px; border-radius: 50%; background: var(--green);
+  margin-top: 5px; flex: 0 0 auto; box-shadow: 0 0 0 3px rgba(7,193,96,.15);
+}
+.mile-body { flex: 1; min-width: 0; }
+.mile-top { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.mile-type { font-size: 14px; font-weight: 600; color: #1f1f1f; }
+.mile-date { font-size: 12px; color: #9aa0a6; flex: 0 0 auto; }
+.mile-note { font-size: 12px; color: #8a756a; margin-top: 3px; line-height: 1.4; }
+
+/* ===== 宝宝档案编辑（灵动版） ===== */
+.avatar-pick {
+  position: relative;
+  width: 96px; height: 96px;
+  margin: 2px auto 0;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: transform .18s ease;
+}
+.avatar-pick:hover { transform: scale(1.06); }
+.avatar-pick:active { transform: scale(0.96); }
+.avatar-pick .avatar {
+  width: 96px; height: 96px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 3px solid #fff;
+  box-shadow: 0 8px 22px rgba(232,155,76,.30);
+}
+.avatar-pick .avatar-empty {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 46px;
+  background: linear-gradient(135deg,#fff3e6,#ffe3cc);
+  border: 3px solid #fff;
+  box-shadow: 0 8px 22px rgba(232,155,76,.25);
+}
+.babycard .avatar-empty {
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px;
+  background: linear-gradient(135deg,#fff3e6,#ffe3cc);
+}
+.avatar-pick .avatar-cam {
+  position: absolute; right: 2px; bottom: 4px;
+  width: 30px; height: 30px;
+  background: var(--green); color: #fff;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px;
+  border: 2px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,.22);
+  animation: camBob 2.4s ease-in-out infinite;
+}
+@keyframes camBob { 0%,100%{ transform: translateY(0); } 50%{ transform: translateY(-3px); } }
+.avatar-hint { text-align: center; color: var(--sub); font-size: 12px; margin: 6px 0 4px; }
+.two-col { display: flex; gap: 10px; }
+.two-col > div { flex: 1; min-width: 0; }
+.unit-in { position: relative; }
+.unit-in .u { position: absolute; right: 12px; top: 50%; transform: translateY(-50%); color: var(--sub); font-size: 13px; pointer-events: none; }
+
+/* ===== 首页：今日概览 hero（主数据） ===== */
+.hero-card { padding: 16px; background: linear-gradient(135deg,#FFF6EC 0%, #FFEEDD 100%); border: 1px solid #F4E0C8; }
+.hero-title { font-size: 14px; font-weight: 700; color: #B5712F; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.hero-primary { display: flex; align-items: center; gap: 14px; background: #fff; border-radius: 16px; padding: 14px 16px; box-shadow: 0 6px 18px rgba(232,155,76,.14); }
+.hp-icon { font-size: 34px; line-height: 1; }
+.hp-main { display: flex; flex-direction: column; line-height: 1; }
+.hp-num { font-size: 42px; font-weight: 800; color: var(--green); letter-spacing: -1.5px; }
+.hp-unit { font-size: 13px; color: var(--sub); margin-top: 4px; }
+.hp-sub { margin-left: auto; text-align: right; }
+.hp-sub b { font-size: 22px; color: #B5712F; }
+.hp-sub i { display: block; font-style: normal; font-size: 12px; color: var(--sub); margin-top: 2px; }
+.hero-grid { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-top: 12px; }
+.hg { background: #fff; border-radius: 12px; padding: 10px 4px; text-align: center; }
+.hg-ic { font-size: 18px; display: block; margin-bottom: 4px; }
+.hg b { font-size: 16px; color: #3a2c20; display: block; line-height: 1.1; }
+.hg i { font-style: normal; font-size: 10px; color: var(--sub); display: block; margin-top: 3px; }
+.hg.warn { background: #FFE9E8; }
+.hg.warn b { color: var(--red); }
+
+/* ===== 首页：全部数据网格 ===== */
+.data-card { padding: 16px; }
+.data-title { font-size: 14px; font-weight: 700; color: #B5712F; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; }
+.data-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+.data-btn { position: relative; background: #FFFDF9; border: 1px solid #F0E2D2; border-radius: 14px; padding: 14px 6px 12px; display: flex; flex-direction: column; align-items: center; gap: 6px; cursor: pointer; transition: transform .15s ease, box-shadow .15s ease; }
+.data-btn:active { transform: scale(.96); }
+.data-btn:hover { box-shadow: 0 6px 16px rgba(232,155,76,.18); }
+.db-ic { font-size: 26px; line-height: 1; }
+.db-label { font-size: 13px; color: #5A3E2B; font-weight: 600; }
+.db-badge { position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--green); color: #fff; font-size: 11px; line-height: 18px; text-align: center; }

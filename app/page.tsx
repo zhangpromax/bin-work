@@ -15,6 +15,7 @@ import { QuickMenu, FormModal, BabyModal, MedEditModal, MrecEditModal, Modal, Pr
 function App() {
   const [tab, setTab] = useState<Tab>('home');
   const [sub, setSub] = useState<HealthSub>('feeding');
+  const [drill, setDrill] = useState<HealthSub | null>(null);
   const [modal, setModal] = useState<Modal>(null);
   const { theme, isLoggedIn, login, loginWithSession } = useStore();
 
@@ -32,7 +33,10 @@ function App() {
     <div className={`app theme-${theme}`}>
       <Header tab={tab} />
       {tab === 'home' && (
-        <HomeView onEditBaby={(id) => setModal({ kind: 'baby', id })} onOpenBaby={() => setModal({ kind: 'baby' })} />
+        <HomeView
+          onEditBaby={(id) => setModal({ kind: 'baby', id })}
+          onOpenBaby={() => setModal({ kind: 'baby' })}
+        />
       )}
       {tab === 'profiles' && <ProfilesView onEditBaby={(id) => setModal({ kind: 'baby', id })} />}
       {tab === 'health' && (
@@ -42,10 +46,13 @@ function App() {
           onForm={(f: FormType) => setModal({ kind: 'form', form: f })}
           onEditMed={(id) => setModal({ kind: 'medEdit', id })}
           onEditMrec={(id) => setModal({ kind: 'mrecEdit', id })}
+          drill={drill}
+          onDrill={(s) => setDrill(s)}
+          onDrillBack={() => setDrill(null)}
         />
       )}
       {tab === 'mine' && <MineView />}
-      <TabBar tab={tab} onTab={setTab} theme={theme} />
+      <TabBar tab={tab} onTab={(x: Tab) => { if (x === 'health') setDrill(null); setTab(x); }} theme={theme} />
       <div className="quick-fab" onClick={() => setModal({ kind: 'quick' })}>+</div>
       <Toast />
 

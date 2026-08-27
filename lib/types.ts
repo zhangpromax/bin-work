@@ -3,6 +3,9 @@ export interface Baby {
   name: string;
   birthday: string;
   gender: 'male' | 'female';
+  height: string; // cm
+  weight: string; // kg
+  bloodType: string; // A|B|AB|O|''
   avatar: string;
   note: string;
   createdAt: number;
@@ -114,6 +117,16 @@ export interface Consumption {
   updatedAt: number;
 }
 
+export interface Milestone {
+  id: string;
+  babyId: string;
+  date: string;
+  type: string; // smile | rollover | sit | teeth | crawl | stand | walk | talk | callparents | recognize | other
+  note: string;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Profile {
   avatar: string;
   username: string;
@@ -142,11 +155,12 @@ export interface DB {
   weights: Weight[];
   reminders: Reminder[];
   consumptions: Consumption[];
+  milestones: Milestone[];
 }
 
 export const TABLES = [
   'babies', 'feedings', 'diapers', 'sleeps', 'temps',
-  'medicines', 'medicals', 'weights', 'reminders', 'consumptions',
+  'medicines', 'medicals', 'weights', 'reminders', 'consumptions', 'milestones',
 ] as const;
 
 export type TableName = (typeof TABLES)[number];
@@ -154,5 +168,5 @@ export type TableName = (typeof TABLES)[number];
 export const EMPTY_DB: DB = {
   profile: { ...EMPTY_PROFILE },
   babies: [], feedings: [], diapers: [], sleeps: [], temps: [],
-  medicines: [], medicals: [], weights: [], reminders: [], consumptions: [],
+  medicines: [], medicals: [], weights: [], reminders: [], consumptions: [], milestones: [],
 };

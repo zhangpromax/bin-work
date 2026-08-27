@@ -7,8 +7,14 @@ import { babyName, money, typeName, medToday, medDoneTotal, medMissed, medicalAl
 import { t } from '../lib/i18n';
 import { ymd } from '../lib/store';
 
-export type HealthSub = 'feeding' | 'diaper' | 'sleep' | 'temp' | 'med' | 'mrec' | 'weight' | 'cost';
+export type HealthSub = 'feeding' | 'diaper' | 'sleep' | 'temp' | 'med' | 'mrec' | 'weight' | 'cost' | 'milestone';
 export type FormType = HealthSub;
+
+/* 下钻映射：从首页数据类型按钮进入时，只渲染对应明细区块 */
+const DRILL_MAP: Record<HealthSub, (p: any) => JSX.Element> = {
+  feeding: FeedSection, diaper: DiaperSection, sleep: SleepSection, temp: TempSection,
+  med: MedSection, mrec: MrecSection, weight: WeightSection, cost: CostSection, milestone: MilestoneSection,
+};
 
 function minusDays(n: number): string {
   const d = new Date();
@@ -26,35 +32,134 @@ function lastDays(n: number, calc: (key: string, date: Date) => number): Pt[] {
   return out;
 }
 
-export function HealthView({ sub, setSub, onForm, onEditMed, onEditMrec }: {
+export function HealthView({ sub, setSub, onForm, onEditMed, onEditMrec, drill, onDrillBack, onDrill }: {
   sub: HealthSub;
   setSub: (s: HealthSub) => void;
   onForm: (t: FormType) => void;
   onEditMed: (id: string) => void;
   onEditMrec: (id: string) => void;
+  drill?: HealthSub | null;
+  onDrillBack?: () => void;
+  onDrill?: (s: HealthSub) => void;
 }) {
-  const subs: { key: HealthSub; label: string }[] = [
-    { key: 'feeding', label: t('feedlog') }, { key: 'diaper', label: t('diapers') },
-    { key: 'sleep', label: t('sleeplog') }, { key: 'temp', label: t('temphd') },
-    { key: 'med', label: t('medlog') }, { key: 'mrec', label: t('medreclog') },
-    { key: 'weight', label: t('weightlog') }, { key: 'cost', label: t('costlog') },
+  const { db } = useStore();
+  const today = ymd();
+
+  // 今日概览主数据
+  const fdCount = db.feedings.filter((f) => f.date === today).length;
+  const fdMl = db.feedings.filter((f) => f.date === today).reduce((a, f) => a + (Number(f.amount) || 0), 0);
+  const ddCount = db.diapers.filter((x) => x.date === today).length;
+  const slH = (db.sleeps.filter((x) => x.date === today).reduce((a, x) => a + (Number(x.duration) || 0), 0) / 60).toFixed(1);
+  const lastTemp = [...db.temps].sort((a, b) => b.createdAt - a.createdAt)[0];
+  const lastWeight = [...db.weights].sort((a, b) => b.date.localeCompare(a.date))[0];
+
+  // 下钻模式：点击数据类型按钮进入，只显示该类型明细
+  if (drill) {
+    const Sec = DRILL_MAP[drill];
+    if (Sec) {
+      return (
+        <main>
+          <button className="btn ghost" style={{ marginBottom: 12 }} onClick={onDrillBack}>
+            ← {t('back')}
+          </button>
+          <Sec onForm={onForm} onEditMed={onEditMed} onEditMrec={onEditMrec} />
+        </main>
+      );
+    }
+  }
+
+  // 默认视图：今日概览 hero + 全部数据按钮网格（点按钮下钻明细）
+  const DATA_BTNS: { type: HealthSub; ic: string; key: string; count: number }[] = [
+    { type: 'feeding', ic: '🍼', key: 'feed', count: db.feedings.length },
+    { type: 'diaper', ic: '💧', key: 'diaper', count: db.diapers.length },
+    { type: 'sleep', ic: '😴', key: 'sleep', count: db.sleeps.length },
+    { type: 'temp', ic: '🌡️', key: 'temp', count: db.temps.length },
+    { type: 'med', ic: '💊', key: 'med', count: db.medicines.length },
+    { type: 'mrec', ic: '🩺', key: 'mrec', count: db.medicals.length },
+    { type: 'weight', ic: '⚖️', key: 'weight', count: db.weights.length },
+    { type: 'cost', ic: '💰', key: 'cost', count: db.consumptions.length },
+    { type: 'milestone', ic: '🌟', key: 'milestone', count: db.milestones.length },
   ];
+
   return (
     <main>
-      <div className="seg">
-        {subs.map((su) => (
-          <button key={su.key} className={sub === su.key ? 'on' : ''} onClick={() => setSub(su.key)}>{su.label}</button>
-        ))}
+      {/* 今日概览 hero */}
+      <div className="card hero-card">
+        <div className="hero-title">📊 {t('todayoverview')}</div>
+        <div className="hero-primary">
+          <span className="hp-icon">🍼</span>
+          <div className="hp-main">
+            <span className="hp-num">{fdCount}</span>
+            <span className="hp-unit">{t('feed')}</span>
+          </div>
+          <div className="hp-sub">
+            <b>{fdMl}</b>
+            <i>ml · {t('today')}</i>
+          </div>
+        </div>
+        <div className="hero-grid">
+          <div className="hg">
+            <span className="hg-ic">💧</span>
+            <b>{ddCount}</b>
+            <i>{t('diaper')}</i>
+          </div>
+          <div className="hg">
+            <span className="hg-ic">😴</span>
+            <b>{slH}h</b>
+            <i>{t('sleep')}</i>
+          </div>
+          <div className={`hg${lastTemp && Number(lastTemp.value) >= 37.5 ? ' warn' : ''}`}>
+            <span className="hg-ic">🌡️</span>
+            <b>{lastTemp ? lastTemp.value : '—'}</b>
+            <i>{t('temp')}</i>
+          </div>
+          <div className="hg">
+            <span className="hg-ic">⚖️</span>
+            <b>{lastWeight ? lastWeight.weight : '—'}</b>
+            <i>{t('weight')}</i>
+          </div>
+        </div>
       </div>
-      {sub === 'feeding' && <FeedSection onForm={onForm} />}
-      {sub === 'diaper' && <DiaperSection onForm={onForm} />}
-      {sub === 'sleep' && <SleepSection onForm={onForm} />}
-      {sub === 'temp' && <TempSection onForm={onForm} />}
-      {sub === 'med' && <MedSection onForm={onForm} onEditMed={onEditMed} />}
-      {sub === 'mrec' && <MrecSection onForm={onForm} onEditMrec={onEditMrec} />}
-      {sub === 'weight' && <WeightSection onForm={onForm} />}
-      {sub === 'cost' && <CostSection onForm={onForm} />}
+
+      {/* 全部数据按钮网格 */}
+      <div className="card data-card">
+        <div className="data-title">🗂️ {t('alldata')}</div>
+        <div className="data-grid">
+          {DATA_BTNS.map((d) => (
+            <button key={d.type} className="data-btn" onClick={() => onDrill && onDrill(d.type)}>
+              <span className="db-ic">{d.ic}</span>
+              <span className="db-label">{t(d.key)}</span>
+              {d.count > 0 && <span className="db-badge">{d.count}</span>}
+            </button>
+          ))}
+        </div>
+      </div>
     </main>
+  );
+}
+
+function MilestoneSection({ onForm }: { onForm: (t: FormType) => void }) {
+  const { db, deleteRow } = useStore();
+  const list = [...db.milestones].sort((a, b) => (a.date < b.date ? 1 : -1));
+  return (
+    <>
+      <button className="btn" onClick={() => onForm('milestone')}>＋ {t('mileadd')}</button>
+      <div className="card"><h3><span className="ic">🌟</span>{t('milestone')}</h3>
+        {!list.length && <div className="empty">{t('nodata')}</div>}
+        <div className="mile-list">
+          {list.map((m) => (
+            <div key={m.id} className="mile-item">
+              <div className="mile-dot" />
+              <div className="mile-body">
+                <div className="mile-top"><span className="mile-type">{typeName('mile', m.type)}</span><span className="mile-date">{m.date}</span></div>
+                {m.note && <div className="mile-note">{m.note}</div>}
+              </div>
+              <button className="btn sm ghost" onClick={() => deleteRow('milestones', m.id)}>{t('delete')}</button>
+            </div>
+          ))}
+        </div>
+      </div>
+    </>
   );
 }
 
