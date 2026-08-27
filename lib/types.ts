@@ -90,6 +90,18 @@ export interface Weight {
   updatedAt: number;
 }
 
+export interface Reminder {
+  id: string;
+  babyId: string;
+  title: string;
+  subTitle: string;
+  icon: string;
+  cycle: string; // JSON { type:'once'|'daily'|'hourly'|'weekly', ... }
+  enabled: boolean;
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface Consumption {
   id: string;
   babyId: string;
@@ -128,12 +140,13 @@ export interface DB {
   medicines: Medicine[];
   medicals: Medical[];
   weights: Weight[];
+  reminders: Reminder[];
   consumptions: Consumption[];
 }
 
 export const TABLES = [
   'babies', 'feedings', 'diapers', 'sleeps', 'temps',
-  'medicines', 'medicals', 'weights', 'consumptions',
+  'medicines', 'medicals', 'weights', 'reminders', 'consumptions',
 ] as const;
 
 export type TableName = (typeof TABLES)[number];
@@ -141,5 +154,5 @@ export type TableName = (typeof TABLES)[number];
 export const EMPTY_DB: DB = {
   profile: { ...EMPTY_PROFILE },
   babies: [], feedings: [], diapers: [], sleeps: [], temps: [],
-  medicines: [], medicals: [], weights: [], consumptions: [],
+  medicines: [], medicals: [], weights: [], reminders: [], consumptions: [],
 };

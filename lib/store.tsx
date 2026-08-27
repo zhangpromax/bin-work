@@ -5,7 +5,7 @@ import React, {
 } from 'react';
 import {
   DB, EMPTY_DB, TableName, TABLES, Baby, Feeding, Diaper, Sleep, Temp,
-  Medicine, Medical, Weight, Consumption, Profile,
+  Medicine, Medical, Weight, Reminder, Consumption, Profile,
 } from './types';
 import {
   cloudInit, cloudPull, cloudPush, cloudDeleteBaby, cloudEnabled, cloudSave,
@@ -29,6 +29,7 @@ function ymd(d?: Date): string {
 }
 
 export type Theme = 'static' | 'dynamic';
+export type MineSub = 'main' | 'userprofile' | 'settings' | 'data' | 'babyProfile' | 'album' | 'reminders' | 'feeding' | 'about';
 
 interface StoreCtx {
   db: DB;
@@ -49,9 +50,9 @@ interface StoreCtx {
   login: (session?: SaSession) => void;
   loginWithSession: () => void;
   logout: () => void;
-  // 我的页子视图（供全局 Header 点击进入个人资料）
-  mineSub: 'main' | 'sync' | 'userprofile';
-  setMineSub: (sub: 'main' | 'sync' | 'userprofile') => void;
+  // 我的页子视图
+  mineSub: MineSub;
+  setMineSub: (sub: MineSub) => void;
   // 通用增删改
   upsertRow: (table: TableName, row: Record<string, unknown>) => void;
   deleteRow: (table: TableName, id: string) => void;
@@ -354,8 +355,9 @@ const saveProfile = (patch: Partial<Profile>) => {
       const nd = new Date(); nd.setDate(nd.getDate() + 14);
       const medicals: Medical[] = [...prev.medicals, { id: uid(), babyId: bid, type: 'vaccine', date: today, nextDate: ymd(nd), cost: '0', note: '', syncedId: null, createdAt: ts, updatedAt: ts }];
       const weights: Weight[] = [...prev.weights, { id: uid(), babyId: bid, date: today, weight: '7.2', createdAt: ts, updatedAt: ts }];
+      const reminders: Reminder[] = [...prev.reminders];
       const consumptions: Consumption[] = [...prev.consumptions, { id: uid(), babyId: bid, category: 'catfood', amount: '358', date: today, note: lang === 'en' ? 'Formula' : '奶粉', source: 'manual', createdAt: ts, updatedAt: ts }];
-      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, consumptions };
+      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, reminders, consumptions };
       schedulePush(nextDb);
       return nextDb;
     });
@@ -466,7 +468,7 @@ const saveProfile = (patch: Partial<Profile>) => {
   };
 
   // 我的页子视图状态（全局 Header 在 mine tab 点击进入个人资料）
-  const [mineSub, setMineSub] = useState<'main' | 'sync' | 'userprofile'>('main');
+  const [mineSub, setMineSub] = useState<MineSub>('main');
 
   const value: StoreCtx = {
     db, lang, cloudOn, theme, toastMsg, toast, clearToast, toggleLang, setTheme,

@@ -14,6 +14,15 @@ export function ageFrom(birthday: string, lang: Lang): string {
   return y > 0 ? `${y}岁${m}个月` : `${m}个月`;
 }
 
+export function daysFrom(birthday: string, lang: Lang): number {
+  if (!birthday) return 0;
+  const bd = new Date(birthday);
+  const n = new Date();
+  const diff = n.getTime() - bd.getTime();
+  const d = Math.max(0, Math.floor(diff / 86400000));
+  return d;
+}
+
 export function money(v: string | number): string {
   return '¥' + (Number(v) || 0).toFixed(2);
 }

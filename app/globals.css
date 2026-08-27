@@ -263,32 +263,32 @@ label { font-size: 13px; color: #8a756a; display: block; margin-top: 12px; }
 .wx-ic { margin-right: 6px; }
 .brand { display: flex; align-items: center; gap: 10px; }
 
-/* 我的页顶部 Header 作为个人资料入口（仅 mine tab） */
+/* 我的页顶部个人资料卡（仅 mine tab，点击进入本人资料编辑） */
 header.top.user-profile-entry { cursor: pointer; }
 header.top.user-profile-entry .brand { flex: 1; }
 header.top .user-avatar-lg {
   width: 46px; height: 46px; border-radius: 50%;
   background: rgba(255,255,255,.55); color: #6B4A2F;
   display: flex; align-items: center; justify-content: center;
-  font-size: 26px; flex: 0 0 auto;
+  font-size: 26px; flex: 0 0 auto; object-fit: cover;
 }
 header.top.user-profile-entry .profile-arrow {
   font-size: 22px; color: rgba(107,74,47,.5);
   margin-left: 8px;
 }
 
-/* 我的资料入口卡片 */
-.profile-entry { display: flex; align-items: center; gap: 12px; cursor: pointer; }
-.profile-avatar {
-  width: 52px; height: 52px; border-radius: 50%;
-  background: var(--green); color: #fff;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 28px; flex: 0 0 auto;
+/* 我的页菜单卡片（参考原型图分组，沿用现有 orange 主题） */
+.menu-card { padding: 4px 16px; }
+.menu-item { display: flex; align-items: center; gap: 12px; padding: 14px 0; border-bottom: 1px solid var(--line); cursor: pointer; }
+.menu-item:last-child { border-bottom: none; }
+.menu-item:active { opacity: .6; }
+.mi-ic {
+  width: 32px; height: 32px; border-radius: 9px; background: var(--tagbg);
+  display: flex; align-items: center; justify-content: center; font-size: 17px; flex: 0 0 auto;
 }
-.profile-meta { flex: 1; min-width: 0; }
-.profile-name { font-weight: 700; font-size: 16px; color: var(--text); }
-.profile-acc { font-size: 13px; color: #A08C82; margin-top: 2px; }
-.profile-arrow { font-size: 22px; color: #C9B8AC; flex: 0 0 auto; }
+.mi-label { flex: 1; font-size: 15px; color: var(--text); }
+.mi-arrow { font-size: 22px; color: #C9B8AC; flex: 0 0 auto; }
+.logout-btn { margin-top: 18px; }
 
 /* 个人资料编辑页 */
 .profile-avatar-lg {
@@ -310,3 +310,53 @@ header.top.user-profile-entry .profile-arrow {
 .avatar-opt img { width: 100%; height: 100%; object-fit: contain; border-radius: 10px; }
 .avatar-opt:active { transform: scale(0.94); }
 .avatar-opt.on { border-color: var(--green); background: #EEF8F2; }
+
+/* ===== 智能提醒 ===== */
+.reminder-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.reminder-head h3 { margin: 0; font-size: 17px; color: var(--text); }
+.reminder-list { display: flex; flex-direction: column; gap: 10px; }
+.reminder-card {
+  display: flex; align-items: center; justify-content: space-between;
+  background: #fff; border-radius: 14px; padding: 12px 14px;
+  box-shadow: 0 2px 8px rgba(107,74,47,.05);
+  cursor: pointer; transition: opacity .15s, transform .1s;
+  border: 1px solid transparent;
+}
+.reminder-card.off { opacity: .55; }
+.reminder-card:active { transform: scale(0.99); }
+.reminder-main { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 0; }
+.reminder-icon { font-size: 24px; width: 32px; text-align: center; }
+.reminder-info { flex: 1; min-width: 0; }
+.reminder-title { font-weight: 600; font-size: 15px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reminder-sub { font-size: 12px; color: #8a756a; margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reminder-hint { text-align: center; font-size: 12px; color: #A08C82; margin-top: 14px; }
+.toggle {
+  width: 46px; height: 26px; border-radius: 13px; background: #e3d8ce;
+  position: relative; border: none; cursor: pointer; flex: 0 0 auto;
+  transition: background .2s; padding: 0;
+}
+.toggle::after {
+  content: ''; position: absolute; left: 2px; top: 2px;
+  width: 22px; height: 22px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.15); transition: transform .2s;
+}
+.toggle.on { background: var(--green); }
+.toggle.on::after { transform: translateX(20px); }
+.emoji-picker { display: flex; flex-wrap: wrap; gap: 8px; margin: 8px 0 14px; align-items: center; }
+.emoji-opt {
+  width: 34px; height: 34px; border-radius: 8px; border: 2px solid #e3d8ce; background: #fff;
+  font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+}
+.emoji-opt.on { border-color: var(--green); background: #EEF8F2; }
+.emoji-input {
+  width: 52px; height: 34px; text-align: center; font-size: 18px; padding: 0 6px;
+  border: 2px solid #e3d8ce; border-radius: 8px; background: #fff;
+}
+.reminder-cycle-seg { margin-bottom: 12px; }
+.reminder-cycle-seg button { min-width: 0; flex: 1; padding: 8px 2px; font-size: 13px; }
+.reminder-cycle-fields { margin-bottom: 14px; }
+.row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; align-items: center; }
+.modal { position: fixed; inset: 0; background: rgba(0,0,0,.45); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
+.modal-box { background: #fff; border-radius: 16px; padding: 18px; width: 100%; max-height: 88vh; overflow-y: auto; }
+.modal-title { font-size: 17px; font-weight: 700; color: var(--text); margin-bottom: 14px; text-align: center; }
+.modal-actions { display: flex; align-items: center; gap: 10px; margin-top: 18px; }

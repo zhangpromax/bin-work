@@ -104,6 +104,19 @@ create table if not exists "weights" (
   "updatedAt" bigint not null default 0
 );
 
+-- 智能提醒
+create table if not exists "reminders" (
+  "id" text primary key,
+  "babyId" text not null default '',
+  "title" text not null default '',
+  "subTitle" text not null default '',
+  "icon" text not null default '',
+  "cycle" text not null default '',
+  "enabled" boolean not null default true,
+  "createdAt" bigint not null default 0,
+  "updatedAt" bigint not null default 0
+);
+
 -- 消费记录
 create table if not exists "consumptions" (
   "id" text primary key,
@@ -125,6 +138,7 @@ create index if not exists idx_temps_baby ON "temps" ("babyId", "date");
 create index if not exists idx_medicines_baby ON "medicines" ("babyId");
 create index if not exists idx_medicals_baby ON "medicals" ("babyId");
 create index if not exists idx_weights_baby ON "weights" ("babyId", "date");
+create index if not exists idx_reminders_baby ON "reminders" ("babyId");
 create index if not exists idx_consumptions_baby ON "consumptions" ("babyId", "date");
 
 -- 关闭行级安全（私有云，一个家庭使用；anon key 直接读写）
@@ -137,6 +151,7 @@ alter table "temps" disable row level security;
 alter table "medicines" disable row level security;
 alter table "medicals" disable row level security;
 alter table "weights" disable row level security;
+alter table "reminders" disable row level security;
 alter table "consumptions" disable row level security;
 
 -- 前端操作日志（登录/注册/忘记密码/同步等关键行为）
