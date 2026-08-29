@@ -81,7 +81,7 @@ export function QuickMenu({ onPick, onClose }: { onPick: (f: FormType) => void; 
 /* ================= 快捷记录表单 ================= */
 export function FormModal({ form, onClose }: { form: FormType; onClose: () => void }) {
   const { db, upsertRow, toast } = useStore();
-  const [babyId, setBabyId] = useState('');
+  const [babyId, setBabyId] = useState(db.babies[0]?.id || '');
   const [amount, setAmount] = useState('');
   const [type, setType] = useState(form === 'diaper' ? 'wet' : form === 'mrec' ? 'vaccine' : 'milk');
   const [cat, setCat] = useState('catfood');
@@ -97,6 +97,8 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
   const [next, setNext] = useState('');
   const [cost, setCost] = useState('');
   const [weight, setWeight] = useState('');
+  const [height, setHeight] = useState('');
+  const [head, setHead] = useState('');
   const [note, setNote] = useState('');
   const [mileType, setMileType] = useState('smile');
 
@@ -123,7 +125,7 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
     } else if (form === 'med') {
       upsertRow('medicines', { id: uid(), babyId, name, startDate: date, totalDays: Number(days) || 1, freq: Number(freq) || 1, doses: {}, note });
     } else if (form === 'weight') {
-      upsertRow('weights', { id: uid(), babyId, date, weight });
+      upsertRow('weights', { id: uid(), babyId, date, weight, height, head });
     } else if (form === 'cost') {
       upsertRow('consumptions', { id: uid(), babyId, category: cat, amount, date, note });
     } else if (form === 'milestone') {
@@ -187,6 +189,22 @@ export function FormModal({ form, onClose }: { form: FormType; onClose: () => vo
       {form === 'weight' && <>
         <label>{t('weightlabel')}</label>
         <input type="number" inputMode="decimal" placeholder="7.5" value={weight} onChange={(e) => setWeight(e.target.value)} />
+        <div className="two-col">
+          <div>
+            <label>{t('height')}</label>
+            <div className="unit-in">
+              <input type="number" inputMode="decimal" placeholder="68" value={height} onChange={(e) => setHeight(e.target.value)} />
+              <span className="u">cm</span>
+            </div>
+          </div>
+          <div>
+            <label>{t('headcirc')}</label>
+            <div className="unit-in">
+              <input type="number" inputMode="decimal" placeholder="43" value={head} onChange={(e) => setHead(e.target.value)} />
+              <span className="u">cm</span>
+            </div>
+          </div>
+        </div>
       </>}
 
       {form === 'cost' && <>

@@ -40,8 +40,77 @@ export function typeName(cat: 'food' | 'mtype' | 'cat' | 'dtype' | 'mile', v: st
 
 export interface Activity {
   ts: number;
+  kind: 'feeding' | 'diaper' | 'sleep' | 'temp' | 'med' | 'medical' | 'weight' | 'consumption' | 'milestone';
   icon: string;
-  text: string;
+  color: string;
+  title: string;
+  sub: string;
+  timeText: string;
+}
+
+const KIND_META: Record<Activity['kind'], { color: string; zhTitle: string; enTitle: string }> = {
+  feeding: { color: '#7ED957', zhTitle: '奶粉', enTitle: 'Formula' },
+  diaper: { color: '#5B9BD5', zhTitle: '换尿布', enTitle: 'Diaper' },
+  sleep: { color: '#F4C542', zhTitle: '小睡', enTitle: 'Nap' },
+  temp: { color: '#FF6F69', zhTitle: '体温', enTitle: 'Temp' },
+  med: { color: '#F28C4E', zhTitle: '喂药', enTitle: 'Medicine' },
+  medical: { color: '#9B7ED9', zhTitle: '医疗', enTitle: 'Medical' },
+  weight: { color: '#3ECF8E', zhTitle: '体重', enTitle: 'Weight' },
+  consumption: { color: '#C9A66B', zhTitle: '消费', enTitle: 'Expense' },
+  milestone: { color: '#FF8FAB', zhTitle: '里程碑', enTitle: 'Milestone' },
+};
+
+function iconFor(kind: Activity['kind'], subtype?: string): string {
+  switch (kind) {
+    case 'feeding':
+      if (subtype === 'solid') return '🥣';
+      if (subtype === 'water') return '💧';
+      return '🍼';
+    case 'diaper':
+      if (subtype === 'dirty') return '💩';
+      if (subtype === 'both') return '💧';
+      return '💧';
+    case 'sleep': return '😴';
+    case 'temp': return '🌡️';
+    case 'med': return '💊';
+    case 'medical':
+      if (subtype === 'vaccine') return '💉';
+      if (subtype === 'visit') return '🏥';
+      return '🩺';
+    case 'weight': return '⚖️';
+    case 'consumption':
+      if (subtype === 'catfood') return '🍚';
+      if (subtype === 'catmedical') return '💊';
+      if (subtype === 'cattoy') return '🧸';
+      if (subtype === 'catcloth') return '👕';
+      return '🛒';
+    case 'milestone':
+      if (subtype === 'smile') return '😊';
+      if (subtype === 'rollover') return '🔄';
+      if (subtype === 'sit') return '🪑';
+      if (subtype === 'teeth') return '🦷';
+      if (subtype === 'crawl') return '🐢';
+      if (subtype === 'stand') return '🧍';
+      if (subtype === 'walk') return '🚶';
+      if (subtype === 'talk') return '💬';
+      if (subtype === 'callparents') return '👨‍👩‍👧';
+      if (subtype === 'recognize') return '👀';
+      return '🌟';
+    default: return '📝';
+  }
+}
+
+function formatActivityTime(ts: number, lang: Lang): string {
+  const d = new Date(ts);
+  const now = new Date();
+  const sameDay = (a: Date, b: Date) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const hm = `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+  if (sameDay(d, now)) return hm;
+  if (sameDay(d, yesterday)) return lang === 'en' ? `Yesterday ${hm}` : `昨 ${hm}`;
+  if (lang === 'en') return `${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getMonth() + 1}月${d.getDate()}日`;
 }
 
 export function babyName(db: DB, id: string): string {
@@ -51,14 +120,44 @@ export function babyName(db: DB, id: string): string {
 
 export function recentActivities(db: DB, lang: Lang): Activity[] {
   const arr: Activity[] = [];
-  db.feedings.forEach((f) => arr.push({ ts: f.createdAt, icon: '🍼', text: `${babyName(db, f.babyId)} · ${t('feed')} ${f.amount}ml (${typeName('food', f.type)})` }));
-  db.diapers.forEach((d) => arr.push({ ts: d.createdAt, icon: '💧', text: `${babyName(db, d.babyId)} · ${t('diaper')} (${typeName('dtype', d.type)})` }));
-  db.sleeps.forEach((s) => arr.push({ ts: s.createdAt, icon: '😴', text: `${babyName(db, s.babyId)} · ${t('sleep')} ${s.duration}${lang === 'en' ? 'min' : '分钟'}` }));
-  db.temps.forEach((p) => arr.push({ ts: p.createdAt, icon: '🌡️', text: `${babyName(db, p.babyId)} · ${t('temp')} ${p.value}°C` }));
-  db.medicines.forEach((m) => { if (m.doses[ymd()]) arr.push({ ts: Date.now() - 1, icon: '💊', text: `${babyName(db, m.babyId)} · ${t('med')} ${m.name}` }); });
-  db.medicals.forEach((m) => arr.push({ ts: m.createdAt, icon: '🩺', text: `${babyName(db, m.babyId)} · ${t('mrec')} ${typeName('mtype', m.type)}` }));
-  db.weights.forEach((w) => arr.push({ ts: w.createdAt, icon: '⚖️', text: `${babyName(db, w.babyId)} · ${t('weight')} ${w.weight}kg` }));
-  db.consumptions.forEach((c) => arr.push({ ts: c.createdAt, icon: '💰', text: `${babyName(db, c.babyId)} · ${t('cost')} ${money(c.amount)} (${typeName('cat', c.category)})` }));
+  const push = (k: Activity['kind'], ts: number, title: string, sub: string, subtype?: string) => {
+    const m = KIND_META[k];
+    arr.push({ ts, kind: k, icon: iconFor(k, subtype), color: m.color, title, sub, timeText: formatActivityTime(ts, lang) });
+  };
+  db.feedings.forEach((f) => {
+    const food = typeName('food', f.type);
+    push('feeding', f.createdAt, `${food} ${f.amount || '—'} ml`, `${babyName(db, f.babyId)} · ${f.time || ''}`, f.type);
+  });
+  db.diapers.forEach((d) => {
+    const dt = typeName('dtype', d.type);
+    push('diaper', d.createdAt, '换尿布', `${babyName(db, d.babyId)} · ${dt}${d.note ? ' · ' + d.note : ''}`, d.type);
+  });
+  db.sleeps.forEach((s) => {
+    const h = (Number(s.duration) || 0) / 60;
+    const dur = h >= 1 ? `${h.toFixed(1)} ${lang === 'en' ? 'h' : '小时'}` : `${s.duration || 0} ${lang === 'en' ? 'min' : '分钟'}`;
+    push('sleep', s.createdAt, `${lang === 'en' ? 'Nap' : '小睡'} ${dur}`, `${babyName(db, s.babyId)} · ${s.start || ''}-${s.end_time || ''}`);
+  });
+  db.temps.forEach((p) => {
+    push('temp', p.createdAt, `${lang === 'en' ? 'Temp' : '体温'} ${p.value}°C`, `${babyName(db, p.babyId)} · ${p.note || (lang === 'en' ? 'Normal' : '正常')}`);
+  });
+  db.medicines.forEach((m) => {
+    Object.entries(m.doses).forEach(([date, count]) => {
+      if (count > 0) push('med', Date.parse(date) || m.createdAt, `${lang === 'en' ? 'Med' : '喂药'} ${m.name}`, `${babyName(db, m.babyId)} · ${count} ${lang === 'en' ? 'dose' : '次'}`);
+    });
+  });
+  db.medicals.forEach((m) => {
+    push('medical', m.createdAt, `${typeName('mtype', m.type)}`, `${babyName(db, m.babyId)}${m.note ? ' · ' + m.note : ''}`, m.type);
+  });
+  db.weights.forEach((w) => {
+    const parts = [w.weight ? `${w.weight}kg` : '', w.height ? `${w.height}cm` : '', w.head ? `${w.head}cm` : ''].filter(Boolean);
+    push('weight', w.createdAt, `${lang === 'en' ? 'Weight' : '体重'} ${parts.join(' / ') || '—'}`, babyName(db, w.babyId));
+  });
+  db.consumptions.forEach((c) => {
+    push('consumption', c.createdAt, `${typeName('cat', c.category)} ${money(c.amount)}`, `${babyName(db, c.babyId)}${c.note ? ' · ' + c.note : ''}`, c.category);
+  });
+  db.milestones.forEach((m) => {
+    push('milestone', m.createdAt, typeName('mile', m.type), `${babyName(db, m.babyId)}${m.note ? ' · ' + m.note : ''}`, m.type);
+  });
   arr.sort((a, b) => b.ts - a.ts);
   return arr.slice(0, 12);
 }

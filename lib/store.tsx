@@ -30,7 +30,7 @@ function ymd(d?: Date): string {
 }
 
 export type Theme = 'static' | 'dynamic';
-export type MineSub = 'main' | 'userprofile' | 'settings' | 'data' | 'babyProfile' | 'album' | 'reminders' | 'feeding' | 'about';
+export type MineSub = 'main' | 'userprofile' | 'settings' | 'data' | 'babyProfile' | 'reminders' | 'feeding' | 'about' | 'sync' | 'theme' | 'lang' | 'storage';
 
 interface StoreCtx {
   db: DB;
@@ -66,6 +66,7 @@ interface StoreCtx {
   // 同步
   saveCloudCfg: (url: string, key: string) => Promise<void>;
   syncNow: () => Promise<void>;
+  lastSyncAt: number | null;
   testConn: (url: string, key: string) => Promise<string>;
   closeCloud: () => void;
   setLocalMode: (on: boolean) => void;
@@ -130,6 +131,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [cloudOn, setCloudOn] = useState<boolean>(false);
   const [theme, setThemeState] = useState<Theme>('static');
   const [toastMsg, setToastMsg] = useState<{ msg: string; id: number } | null>(null);
+  const [lastSyncAt, setLastSyncAt] = useState<number | null>(null);
   const pushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dbRef = useRef<DB>(db);
   dbRef.current = db;
@@ -327,6 +329,7 @@ const saveProfile = (patch: Partial<Profile>) => {
       let merged = await cloudPull(dbRef.current);
       await cloudPush(merged);
       setDb(merged);
+      setLastSyncAt(Date.now());
       toast('已同步 ✓');
     } catch (e) {
       toast('同步失败：' + (e instanceof Error ? e.message : '网络问题'));
@@ -406,11 +409,18 @@ const saveProfile = (patch: Partial<Profile>) => {
         const day = new Date(); day.setDate(day.getDate() - d);
         temps.push({ id: uid(), babyId: bid, date: ymd(day), time: '08:00', value: (36.5 + ((d % 3) * 0.3)).toFixed(1), note: '', createdAt: ts, updatedAt: ts });
       }
-      // 体重：过去 4 周，每周 1 次（稳定增长）
+      // 体重：过去 4 周，每周 1 次（稳定增长）+ 同步身高/头围
       const weights: Weight[] = [...prev.weights];
       for (let w = 4; w >= 0; w--) {
         const day = new Date(); day.setDate(day.getDate() - w * 7);
-        weights.push({ id: uid(), babyId: bid, date: ymd(day), weight: (6.8 + (4 - w) * 0.18).toFixed(1), createdAt: ts, updatedAt: ts });
+        const wk = 4 - w; // 0..4
+        weights.push({
+          id: uid(), babyId: bid, date: ymd(day),
+          weight: (6.8 + wk * 0.18).toFixed(1),
+          height: (60 + wk * 1.2).toFixed(1),
+          head: (40 + wk * 0.5).toFixed(1),
+          createdAt: ts, updatedAt: ts,
+        });
       }
       // 用药：维 D 每日 1 次
       const today = ymd();
@@ -430,13 +440,20 @@ const saveProfile = (patch: Partial<Profile>) => {
         { id: uid(), babyId: bid, category: 'catdiaper', amount: '129', date: ymd(new Date(Date.now() - 3 * 86400000)), note: ZH ? '纸尿裤' : 'Diapers', source: 'manual', createdAt: ts, updatedAt: ts },
         { id: uid(), babyId: bid, category: 'cattoy', amount: '89', date: ymd(new Date(Date.now() - 6 * 86400000)), note: ZH ? '摇铃玩具' : 'Toy', source: 'manual', createdAt: ts, updatedAt: ts },
       ];
+      // 手动成长记录（成长里程碑）
+      const milestones = [...prev.milestones,
+        { id: uid(), babyId: bid, type: 'smile', date: ymd(new Date(Date.now() - 800 * 86400000)), note: ZH ? '第一次冲妈妈笑' : 'First smile at mommy', createdAt: ts, updatedAt: ts },
+        { id: uid(), babyId: bid, type: 'rollover', date: ymd(new Date(Date.now() - 600 * 86400000)), note: ZH ? '学会翻身啦' : 'Learned to roll over', createdAt: ts, updatedAt: ts },
+        { id: uid(), babyId: bid, type: 'sit', date: ymd(new Date(Date.now() - 400 * 86400000)), note: ZH ? '能自己坐稳玩玩具' : 'Can sit and play', createdAt: ts, updatedAt: ts },
+        { id: uid(), babyId: bid, type: 'teeth', date: ymd(new Date(Date.now() - 300 * 86400000)), note: ZH ? '第一颗小乳牙冒头' : 'First tooth came out', createdAt: ts, updatedAt: ts },
+      ];
       // 提醒
       const reminders: Reminder[] = [...prev.reminders,
         { id: uid(), babyId: bid, title: ZH ? '喂奶提醒' : 'Feeding', subTitle: ZH ? '每4小时' : 'Every 4h', icon: '🍼', cycle: JSON.stringify({ type: 'hourly', hours: 4 }), enabled: true, createdAt: ts, updatedAt: ts },
         { id: uid(), babyId: bid, title: ZH ? '测体温' : 'Measure temp', subTitle: ZH ? '每天 20:00' : 'Daily 20:00', icon: '🌡', cycle: JSON.stringify({ type: 'daily', time: '20:00' }), enabled: true, createdAt: ts, updatedAt: ts },
         { id: uid(), babyId: bid, title: ZH ? '疫苗预约' : 'Vaccine', subTitle: ZH ? '3周后' : 'In 3 weeks', icon: '💉', cycle: JSON.stringify({ type: 'once', days: 21 }), enabled: false, createdAt: ts, updatedAt: ts },
       ];
-      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, reminders, consumptions, milestones: [], milestoneDone: prev.milestoneDone || [] };
+      const nextDb: DB = { profile: { ...prev.profile }, babies, feedings, diapers, sleeps, temps, medicines, medicals, weights, reminders, consumptions, milestones, milestoneDone: prev.milestoneDone || [] };
       // ⚠️ 演示数据【仅写入本地内存】，刻意不调用 schedulePush，避免污染云端/正式环境
       return nextDb;
     });
@@ -558,7 +575,7 @@ const saveProfile = (patch: Partial<Profile>) => {
     db, lang, cloudOn, theme, toastMsg, toast, clearToast, toggleLang, setTheme,
     saveProfile, updateProfile,
     isLoggedIn, currentUser, login, loginWithSession, logout,
-    mineSub, setMineSub,
+    mineSub, setMineSub, lastSyncAt,
     upsertRow, deleteRow, toggleMilestoneDone, deleteBabyCascade, saveMedicalRow, deleteMedicalRow, doseMed,
     saveCloudCfg, syncNow, testConn, closeCloud, setLocalMode, usingDefaultCloud,
     loadSamples, clearData, exportData, importData,

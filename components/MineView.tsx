@@ -2,7 +2,8 @@
 
 import React, { useRef, useState, useEffect } from 'react';
 import { useStore } from '../lib/store';
-import { t } from '../lib/i18n';
+import { t, type Lang } from '../lib/i18n';
+import { DB } from '../lib/types';
 import { isLocalOnly } from '../lib/cloud';
 import { bindPhone } from '../lib/auth';
 import { logOperation } from '../lib/logs';
@@ -19,7 +20,7 @@ export function MineView() {
     db, lang, cloudOn, syncNow, setLocalMode, usingDefaultCloud, loadSamples, clearData,
     exportData, importData, toast, theme, setTheme, toggleLang, isLoggedIn,
     currentUser, login, loginWithSession, logout, updateProfile, mineSub, setMineSub,
-    upsertRow, deleteRow,
+    upsertRow, deleteRow, lastSyncAt,
   } = useStore();
   const [localMode, setLocalModeState] = useState(isLocalOnly());
   const [babyModal, setBabyModal] = useState<{ id?: string } | null>(null);
@@ -74,6 +75,45 @@ export function MineView() {
             <span className="mi-arrow">›</span>
           </div>
         ))}
+      </div>
+    );
+  }
+
+  // —— 存储卡片：已用空间（实时，按数据体积算）+ 云空间额度 + 同步按钮 ——
+  function StorageCard({ db, cloudOn, lastSyncAt, onSync, lang }: {
+    db: DB; cloudOn: boolean; lastSyncAt: number | null; onSync: () => void; lang: Lang;
+  }) {
+    const usedBytes = JSON.stringify(db).length;
+    const QUOTA = 1024 * 1024 * 1024; // 云空间额度（示例 1GB，可按需调整）
+    const pct = Math.min(100, (usedBytes / QUOTA) * 100);
+    const [syncing, setSyncing] = useState(false);
+    const fmt = (b: number) =>
+      b < 1024 ? b + ' B' : b < 1048576 ? (b / 1024).toFixed(1) + ' KB' : (b / 1048576).toFixed(2) + ' MB';
+    const lastTxt = lastSyncAt
+      ? new Date(lastSyncAt).toLocaleString(lang === 'en' ? 'en-US' : 'zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+      : (lang === 'en' ? 'Not synced yet' : '尚未同步');
+    return (
+      <div className="card">
+        <h3><span className="ic">💾</span>{t('storage')}</h3>
+        <div className="mini" style={{ marginBottom: 10 }}>{t('storageSub')}</div>
+        <div className="row"><span className="muted">{t('usedSpace')}</span><b>{fmt(usedBytes)}</b></div>
+        <div className="row"><span className="muted">{t('cloudSpace')}</span><span className="muted">{fmt(QUOTA)}</span></div>
+        <div className="progress"><i style={{ width: pct + '%' }} /></div>
+        <div className="mini" style={{ marginTop: 8 }}>{t('realtimeTip')}</div>
+        {cloudOn ? (
+          <>
+            <div className="row" style={{ marginTop: 6 }}>
+              <span className="muted">{t('lastSync')}</span>
+              <span className="muted">{lastTxt}</span>
+            </div>
+            <button className="btn" style={{ marginTop: 12 }} disabled={syncing}
+              onClick={async () => { setSyncing(true); await onSync(); setSyncing(false); }}>
+              🔄 {syncing ? t('syncing') : t('syncBtn')}
+            </button>
+          </>
+        ) : (
+          <div className="mini" style={{ marginTop: 10, color: '#C0792E' }}>📱 {t('localOnlyStorage')}</div>
+        )}
       </div>
     );
   }
@@ -189,36 +229,39 @@ export function MineView() {
     );
   }
 
-  // —— 成长相册 / 喂养设置 占位 ——
-  if (mineSub === 'album' || mineSub === 'feeding') {
-    const titles: Record<string, string> = {
-      album: t('album'), feeding: t('feedingSet'),
-    };
+  // —— 喂养设置 占位 ——
+  if (mineSub === 'feeding') {
     return (
       <main>
-        {back}
+        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => setMineSub('main')}>← {t('tabmine') === 'Mine' ? 'Back' : '返回'}</button>
         <div className="card">
-          <h3><span className="ic">📷</span>{titles[mineSub]}</h3>
+          <h3><span className="ic">🍼</span>{t('feedingSet')}</h3>
           <div className="empty">{t('tabmine') === 'Mine' ? 'Coming soon' : '功能开发中，敬请期待'}</div>
         </div>
       </main>
     );
   }
 
-  // —— 设置子页（喂养设置入口 + 同步 + 主题 + 语言）——
+  // —— 设置子页（同步 / 主题 / 语言 / 存储 共一个菜单卡片，下钻）——
   if (mineSub === 'settings') {
     return (
       <main>
         {back}
-        {/* 喂养设置：聚合进设置 */}
-        <div className="card">
-          <div className="menu-item" onClick={() => setMineSub('feeding')}>
-            <span className="mi-ic">🍼</span>
-            <span className="mi-label">{t('feedingSet')}</span>
-            <span className="mi-arrow">›</span>
-          </div>
-        </div>
-        {/* 同步设置 */}
+        <MenuCard items={[
+          { icon: '⚙️', label: t('syncset'), onClick: () => setMineSub('sync') },
+          { icon: '🎨', label: t('theme'), onClick: () => setMineSub('theme') },
+          { icon: '🌐', label: t('tabmine') === 'Mine' ? 'Language' : '语言', onClick: () => setMineSub('lang') },
+          { icon: '💾', label: t('storage'), sub: t('storageSub'), onClick: () => setMineSub('storage') },
+        ]} />
+      </main>
+    );
+  }
+
+  // —— 同步设置（下钻页）——
+  if (mineSub === 'sync') {
+    return (
+      <main>
+        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => setMineSub('settings')}>← {t('tabmine') === 'Mine' ? 'Back' : '返回'}</button>
         <div className="card">
           <h3><span className="ic">⚙️</span>{t('syncset')}</h3>
           <div className="row">
@@ -237,7 +280,15 @@ export function MineView() {
             </div>
           )}
         </div>
-        {/* 主题风格 */}
+      </main>
+    );
+  }
+
+  // —— 主题风格（下钻页）——
+  if (mineSub === 'theme') {
+    return (
+      <main>
+        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => setMineSub('settings')}>← {t('tabmine') === 'Mine' ? 'Back' : '返回'}</button>
         <div className="card">
           <h3><span className="ic">🎨</span>{t('theme')}</h3>
           <div className="mini" style={{ marginBottom: 10 }}>{t('themeTip')}</div>
@@ -246,14 +297,32 @@ export function MineView() {
             <button className={theme === 'dynamic' ? 'on' : ''} onClick={() => setTheme('dynamic')}>✨ {t('themeDynamic')}</button>
           </div>
         </div>
-        {/* 语言 */}
+      </main>
+    );
+  }
+
+  // —— 语言（下钻页）——
+  if (mineSub === 'lang') {
+    return (
+      <main>
+        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => setMineSub('settings')}>← {t('tabmine') === 'Mine' ? 'Back' : '返回'}</button>
         <div className="card">
           <h3><span className="ic">🌐</span>{t('tabmine') === 'Mine' ? 'Language' : '语言'}</h3>
           <div className="seg">
-            <button className={lang === 'zh' ? 'on' : ''} onClick={() => toggleLang()}>中文</button>
-            <button className={lang === 'en' ? 'on' : ''} onClick={() => toggleLang()}>EN</button>
+            <button className={lang === 'zh' ? 'on' : ''} onClick={() => { if (lang !== 'zh') toggleLang(); }}>中文</button>
+            <button className={lang === 'en' ? 'on' : ''} onClick={() => { if (lang !== 'en') toggleLang(); }}>EN</button>
           </div>
         </div>
+      </main>
+    );
+  }
+
+  // —— 存储（下钻页）：使用概况 ——
+  if (mineSub === 'storage') {
+    return (
+      <main>
+        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => setMineSub('settings')}>← {t('tabmine') === 'Mine' ? 'Back' : '返回'}</button>
+        <StorageCard db={db} cloudOn={cloudOn} lastSyncAt={lastSyncAt} onSync={syncNow} lang={lang} />
       </main>
     );
   }
@@ -300,19 +369,15 @@ export function MineView() {
       )}
 
       <MenuCard items={[
-        { icon: '📋', label: t('babyProfile'), onClick: () => setMineSub('babyProfile') },
-        { icon: '📷', label: t('album'), onClick: () => setMineSub('album') },
+        { icon: '🍼', label: t('feedingSet'), onClick: () => setMineSub('feeding') },
         { icon: '🔔', label: t('reminders'), onClick: () => setMineSub('reminders') },
-      ]} />
-
-      <MenuCard items={[
         { icon: '⚙️', label: t('settings'), onClick: () => setMineSub('settings') },
-        { icon: '💾', label: t('data'), onClick: () => setMineSub('data') },
+        { icon: '📊', label: t('data'), onClick: () => setMineSub('data') },
         { icon: 'ℹ️', label: t('about'), onClick: () => setMineSub('about') },
       ]} />
 
       {isLoggedIn && (
-        <button className="btn red logout-btn" onClick={logout}>
+        <button className="btn ghost logout-btn" onClick={logout}>
           {t('signout')}
         </button>
       )}

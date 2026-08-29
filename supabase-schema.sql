@@ -178,6 +178,5 @@ create table if not exists "milestones" (
   "updatedAt" bigint not null default 0
 );
 create index if not exists idx_milestones_baby ON "milestones" ("babyId", "date");
--- 开启行级安全（与现有 9 表一致，已登录用户可读写）
-alter table "milestones" enable row level security;
-create policy "milestones_auth" on "milestones" for all to authenticated using (true) with check (true);
+-- 关闭行级安全（与现有所有表一致，前端用 anon key 同步可读写）
+alter table "milestones" disable row level security;

@@ -89,6 +89,8 @@ export interface Weight {
   babyId: string;
   date: string;
   weight: string; // kg
+  height: string; // cm 身高
+  head: string; // cm 头围
   createdAt: number;
   updatedAt: number;
 }

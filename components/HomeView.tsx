@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useStore } from '../lib/store';
-import { ageFrom, money, babyName, medicalAlerts, medToday, typeName, recentActivities } from '../lib/helpers';
+import { ageFrom, money, babyName, medicalAlerts, medToday, typeName, recentActivities, Activity } from '../lib/helpers';
 import { t, type Lang } from '../lib/i18n';
 import { ymd } from '../lib/store';
 import { BabyAvatar } from './BabyAvatar';
@@ -47,12 +47,47 @@ function greetWord(now: Date): string {
   return h < 6 ? '凌晨好' : h < 12 ? '早上好' : h < 14 ? '中午好' : h < 18 ? '下午好' : h < 22 ? '晚上好' : '夜深了';
 }
 
+function RecentItem({ a }: { a: Activity }) {
+  return (
+    <div className="recent-item">
+      <div className="recent-icon" style={{ color: a.color }}>{a.icon}</div>
+      <div className="recent-body">
+        <div className="recent-title">{a.title}</div>
+        <div className="recent-sub">{a.sub}</div>
+      </div>
+      <div className="recent-time">{a.timeText}</div>
+    </div>
+  );
+}
+
 export function HomeView({ onEditBaby, onOpenBaby }: { onEditBaby: (id: string) => void; onOpenBaby: () => void }) {
   const { db, lang } = useStore();
+  const [recentSub, setRecentSub] = useState<'home' | 'all'>('home');
   const today = ymd();
   const now = new Date();
   const copies = buildGreetCopies(db.babies[0], db, today, lang);
   const copy = copies[Math.floor(Math.random() * copies.length)];
+  const acts = recentActivities(db, lang);
+
+  if (recentSub === 'all') {
+    return (
+      <main>
+        <button className="btn ghost" style={{ marginBottom: 12 }} onClick={() => setRecentSub('home')}>← {t('back')}</button>
+        <div className="card recent-card">
+          <div className="recent-header">
+            <h3>{t('recent')}</h3>
+          </div>
+          {acts.length === 0 ? (
+            <div className="empty">{t('nodata')}</div>
+          ) : (
+            <div className="recent-list">
+              {acts.map((a, i) => <RecentItem key={i} a={a} />)}
+            </div>
+          )}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main>
@@ -65,9 +100,13 @@ export function HomeView({ onEditBaby, onOpenBaby }: { onEditBaby: (id: string) 
 
       {/* 宝宝卡片 */}
       <div className="card baby-card">
-        <h3><span className="ic">👶</span>{t('babies')}</h3>
+        <h3>{t('babies')}</h3>
         {!db.babies.length && (
-          <div className="empty">{t('addbaby')} ➜ {t('tabprofile')}</div>
+          <div className="empty">
+            <span style={{ fontSize: 32 }}>👶</span>
+            <span>{t('addBabyTip')}</span>
+            <button className="btn sm" style={{ marginTop: 8 }} onClick={onOpenBaby}>＋ {t('addbaby')}</button>
+          </div>
         )}
         {db.babies.map((b) => {
           const fd = db.feedings.filter((f) => f.babyId === b.id && f.date === today).length;
@@ -110,7 +149,7 @@ export function HomeView({ onEditBaby, onOpenBaby }: { onEditBaby: (id: string) 
       </div>
 
       {/* 今日待办 */}
-      <div className="card"><h3><span className="ic">✅</span>{t('todaytodo')}</h3>
+      <div className="card"><h3>{t('todaytodo')}</h3>
         {(() => {
           let any = false;
           const rows: React.ReactNode[] = [];
@@ -146,12 +185,20 @@ export function HomeView({ onEditBaby, onOpenBaby }: { onEditBaby: (id: string) 
       </div>
 
       {/* 最近动态 */}
-      <div className="card"><h3><span className="ic">📌</span>{t('recent')}</h3>
-        {(() => {
-          const acts = recentActivities(db, lang);
-          if (!acts.length) return <div className="empty">{t('nodata')}</div>;
-          return acts.map((a, i) => <div key={i} className="row"><span>{a.icon} {a.text}</span></div>);
-        })()}
+      <div className="card recent-card">
+        <div className="recent-header">
+          <h3>{t('recent')}</h3>
+          {acts.length > 5 && (
+            <span className="recent-all" onClick={() => setRecentSub('all')}>{t('all')} ›</span>
+          )}
+        </div>
+        {acts.length === 0 ? (
+          <div className="empty">{t('nodata')}</div>
+        ) : (
+          <div className="recent-list">
+            {acts.slice(0, 5).map((a, i) => <RecentItem key={i} a={a} />)}
+          </div>
+        )}
       </div>
     </main>
   );
