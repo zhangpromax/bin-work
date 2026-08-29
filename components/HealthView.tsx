@@ -10,10 +10,10 @@ import { ymd } from '../lib/store';
 export type HealthSub = 'feeding' | 'diaper' | 'sleep' | 'temp' | 'med' | 'mrec' | 'weight' | 'cost' | 'milestone';
 export type FormType = HealthSub;
 
-/* 下钻映射：从首页数据类型按钮进入时，只渲染对应明细区块 */
-const DRILL_MAP: Record<HealthSub, (p: any) => JSX.Element> = {
+/* 下钻映射：从数据页按钮进入时，只渲染对应明细区块（成长相关的 milestone/weight 已移到「成长」页） */
+const DRILL_MAP: Partial<Record<HealthSub, (p: any) => JSX.Element>> = {
   feeding: FeedSection, diaper: DiaperSection, sleep: SleepSection, temp: TempSection,
-  med: MedSection, mrec: MrecSection, weight: WeightSection, cost: CostSection, milestone: MilestoneSection,
+  med: MedSection, mrec: MrecSection, cost: CostSection,
 };
 
 function minusDays(n: number): string {
@@ -76,9 +76,7 @@ export function HealthView({ sub, setSub, onForm, onEditMed, onEditMrec, drill, 
     { type: 'temp', ic: '🌡️', key: 'temp', count: db.temps.length },
     { type: 'med', ic: '💊', key: 'med', count: db.medicines.length },
     { type: 'mrec', ic: '🩺', key: 'mrec', count: db.medicals.length },
-    { type: 'weight', ic: '⚖️', key: 'weight', count: db.weights.length },
     { type: 'cost', ic: '💰', key: 'cost', count: db.consumptions.length },
-    { type: 'milestone', ic: '🌟', key: 'milestone', count: db.milestones.length },
   ];
 
   return (
@@ -135,31 +133,6 @@ export function HealthView({ sub, setSub, onForm, onEditMed, onEditMrec, drill, 
         </div>
       </div>
     </main>
-  );
-}
-
-function MilestoneSection({ onForm }: { onForm: (t: FormType) => void }) {
-  const { db, deleteRow } = useStore();
-  const list = [...db.milestones].sort((a, b) => (a.date < b.date ? 1 : -1));
-  return (
-    <>
-      <button className="btn" onClick={() => onForm('milestone')}>＋ {t('mileadd')}</button>
-      <div className="card"><h3><span className="ic">🌟</span>{t('milestone')}</h3>
-        {!list.length && <div className="empty">{t('nodata')}</div>}
-        <div className="mile-list">
-          {list.map((m) => (
-            <div key={m.id} className="mile-item">
-              <div className="mile-dot" />
-              <div className="mile-body">
-                <div className="mile-top"><span className="mile-type">{typeName('mile', m.type)}</span><span className="mile-date">{m.date}</span></div>
-                {m.note && <div className="mile-note">{m.note}</div>}
-              </div>
-              <button className="btn sm ghost" onClick={() => deleteRow('milestones', m.id)}>{t('delete')}</button>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
   );
 }
 
@@ -323,29 +296,6 @@ function MrecSection({ onForm, onEditMrec }: { onForm: (t: FormType) => void; on
         })}
       </div>
       <button className="btn" onClick={() => onForm('mrec')}>＋ {t('mrec')}</button>
-    </>
-  );
-}
-
-function WeightSection({ onForm }: { onForm: (t: FormType) => void }) {
-  const { db, lang } = useStore();
-  const list = [...db.weights].sort((a, b) => (a.date > b.date ? 1 : -1));
-  const data: Pt[] = list.map((w) => ({ l: w.date.slice(5), v: Number(w.weight) }));
-  return (
-    <>
-      <div className="card"><h3><span className="ic">⚖️</span>{t('weighttrend')}</h3>
-        {data.length ? <SvgLine data={data} /> : <div className="empty">{t('nodata')}</div>}
-        {data.length >= 2 && (
-          <div className="mini" style={{ marginTop: 6 }}>
-            {lang === 'en' ? 'vs last' : '较上次'} {((data[data.length - 1].v - data[data.length - 2].v)).toFixed(2)}kg
-          </div>
-        )}
-      </div>
-      <div className="card"><h3><span className="ic">📋</span>{t('weightlog')}</h3>
-        {!list.length && <div className="empty">{t('nodata')}</div>}
-        {[...list].reverse().map((w) => <div key={w.id} className="row"><span>{w.date}</span><span>{w.weight}kg · {babyName(db, w.babyId)}</span></div>)}
-      </div>
-      <button className="btn" onClick={() => onForm('weight')}>＋ {t('weight')}</button>
     </>
   );
 }

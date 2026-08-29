@@ -38,7 +38,7 @@ function App() {
           onOpenBaby={() => setModal({ kind: 'baby' })}
         />
       )}
-      {tab === 'profiles' && <ProfilesView onEditBaby={(id) => setModal({ kind: 'baby', id })} />}
+      {tab === 'profiles' && <ProfilesView onEditBaby={(id) => setModal({ kind: 'baby', id })} onForm={(f) => setModal({ kind: 'form', form: f })} />}
       {tab === 'health' && (
         <HealthView
           sub={sub}
@@ -53,7 +53,6 @@ function App() {
       )}
       {tab === 'mine' && <MineView />}
       <TabBar tab={tab} onTab={(x: Tab) => { if (x === 'health') setDrill(null); setTab(x); }} theme={theme} />
-      <div className="quick-fab" onClick={() => setModal({ kind: 'quick' })}>+</div>
       <Toast />
 
       {modal?.kind === 'quick' && <QuickMenu onClose={() => setModal(null)} onPick={(f) => setModal({ kind: 'form', form: f })} />}
